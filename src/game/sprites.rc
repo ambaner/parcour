@@ -1,0 +1,70 @@
+/* sprites.rc — Embed all sprite PNGs as RCDATA resources */
+#include "resource.h"
+
+/* adventurer-crnr-clmb: 5 frames */
+100 RCDATA "..\\..\\sprites\\adventurer-crnr-clmb-00.png"
+101 RCDATA "..\\..\\sprites\\adventurer-crnr-clmb-01.png"
+102 RCDATA "..\\..\\sprites\\adventurer-crnr-clmb-02.png"
+103 RCDATA "..\\..\\sprites\\adventurer-crnr-clmb-03.png"
+104 RCDATA "..\\..\\sprites\\adventurer-crnr-clmb-04.png"
+
+/* adventurer-crnr-grb: 4 frames */
+116 RCDATA "..\\..\\sprites\\adventurer-crnr-grb-00.png"
+117 RCDATA "..\\..\\sprites\\adventurer-crnr-grb-01.png"
+118 RCDATA "..\\..\\sprites\\adventurer-crnr-grb-02.png"
+119 RCDATA "..\\..\\sprites\\adventurer-crnr-grb-03.png"
+
+/* adventurer-crouch: 4 frames */
+132 RCDATA "..\\..\\sprites\\adventurer-crouch-00.png"
+133 RCDATA "..\\..\\sprites\\adventurer-crouch-01.png"
+134 RCDATA "..\\..\\sprites\\adventurer-crouch-02.png"
+135 RCDATA "..\\..\\sprites\\adventurer-crouch-03.png"
+
+/* adventurer-fall: 2 frames */
+148 RCDATA "..\\..\\sprites\\adventurer-fall-00.png"
+149 RCDATA "..\\..\\sprites\\adventurer-fall-01.png"
+
+/* adventurer-idle: 4 frames */
+164 RCDATA "..\\..\\sprites\\adventurer-idle-00.png"
+165 RCDATA "..\\..\\sprites\\adventurer-idle-01.png"
+166 RCDATA "..\\..\\sprites\\adventurer-idle-02.png"
+167 RCDATA "..\\..\\sprites\\adventurer-idle-03.png"
+
+/* adventurer-jump: 4 frames */
+180 RCDATA "..\\..\\sprites\\adventurer-jump-00.png"
+181 RCDATA "..\\..\\sprites\\adventurer-jump-01.png"
+182 RCDATA "..\\..\\sprites\\adventurer-jump-02.png"
+183 RCDATA "..\\..\\sprites\\adventurer-jump-03.png"
+
+/* adventurer-run: 6 frames */
+196 RCDATA "..\\..\\sprites\\adventurer-run-00.png"
+197 RCDATA "..\\..\\sprites\\adventurer-run-01.png"
+198 RCDATA "..\\..\\sprites\\adventurer-run-02.png"
+199 RCDATA "..\\..\\sprites\\adventurer-run-03.png"
+200 RCDATA "..\\..\\sprites\\adventurer-run-04.png"
+201 RCDATA "..\\..\\sprites\\adventurer-run-05.png"
+
+/* adventurer-smrslt: 4 frames */
+212 RCDATA "..\\..\\sprites\\adventurer-smrslt-00.png"
+213 RCDATA "..\\..\\sprites\\adventurer-smrslt-01.png"
+214 RCDATA "..\\..\\sprites\\adventurer-smrslt-02.png"
+215 RCDATA "..\\..\\sprites\\adventurer-smrslt-03.png"
+
+/* adventurer-stand: 3 frames */
+228 RCDATA "..\\..\\sprites\\adventurer-stand-00.png"
+229 RCDATA "..\\..\\sprites\\adventurer-stand-01.png"
+230 RCDATA "..\\..\\sprites\\adventurer-stand-02.png"
+
+/* adventurer-walk: 6 frames */
+244 RCDATA "..\\..\\sprites\\adventurer-walk-00.png"
+245 RCDATA "..\\..\\sprites\\adventurer-walk-01.png"
+246 RCDATA "..\\..\\sprites\\adventurer-walk-02.png"
+247 RCDATA "..\\..\\sprites\\adventurer-walk-03.png"
+248 RCDATA "..\\..\\sprites\\adventurer-walk-04.png"
+249 RCDATA "..\\..\\sprites\\adventurer-walk-05.png"
+
+/* adventurer-wall-slide: 2 frames */
+260 RCDATA "..\\..\\sprites\\adventurer-wall-slide-00.png"
+261 RCDATA "..\\..\\sprites\\adventurer-wall-slide-01.png"
+
+/* adventurer-slide: no dedicated frames — reuses smrslt at runtime */

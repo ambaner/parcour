@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <style>
+      .title { font-size: 22px; font-weight: bold; fill: #1a1a2e; }
+      .subtitle { font-size: 13px; fill: #666; }
+      .box-label { font-size: 15px; font-weight: bold; fill: #fff; }
+      .module { font-size: 12px; fill: #e0e0e0; }
+      .note { font-size: 11px; fill: #555; font-style: italic; }
+      .arrow-label { font-size: 11px; fill: #444; }
+      .section-label { font-size: 13px; font-weight: bold; fill: #333; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3a86ff"/>
+    </marker>
+    <linearGradient id="exe-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d3436;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="620" rx="12" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" class="title">Parcour Architecture</text>
+  <text x="450" y="58" text-anchor="middle" class="subtitle">Prince of Persia-inspired 2D Platformer · Pure C / Win32</text>
+
+  <!-- ═══════════ BUILD PIPELINE (top) ═══════════ -->
+  <text x="40" y="95" class="section-label">Build Pipeline (build.bat)</text>
+
+  <!-- Step 1: Compile engine -->
+  <rect x="40" y="105" width="185" height="44" rx="6" fill="#e8f4f8" stroke="#b2d8e8" stroke-width="1.5"/>
+  <text x="132" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a6e8a">① Compile Engine</text>
+  <text x="132" y="138" text-anchor="middle" font-size="10" fill="#2a8aaa">8 .c → .obj → engine.lib</text>
+
+  <!-- Step 2: Embed sprites -->
+  <rect x="255" y="105" width="185" height="44" rx="6" fill="#fff3e0" stroke="#ffcc80" stroke-width="1.5"/>
+  <text x="347" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="#e65100">② Embed Sprites</text>
+  <text x="347" y="138" text-anchor="middle" font-size="10" fill="#f57c00">rc.exe → sprites.res</text>
+
+  <!-- Step 3: Link game -->
+  <rect x="470" y="105" width="185" height="44" rx="6" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5"/>
+  <text x="562" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="#2e7d32">③ Link Game</text>
+  <text x="562" y="138" text-anchor="middle" font-size="10" fill="#43a047">→ parcour.exe</text>
+
+  <!-- Step 4: Link tests -->
+  <rect x="685" y="105" width="185" height="44" rx="6" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1.5"/>
+  <text x="777" y="122" text-anchor="middle" font-size="11" font-weight="bold" fill="#7b1fa2">④ Link Tests</text>
+  <text x="777" y="138" text-anchor="middle" font-size="10" fill="#9c27b0">→ test_runner.exe</text>
+
+  <!-- Pipeline arrows -->
+  <line x1="225" y1="127" x2="253" y2="127" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="127" x2="468" y2="127" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="655" y1="127" x2="683" y2="127" stroke="#999" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════ MAIN EXE BOX ═══════════ -->
+  <rect x="30" y="175" width="840" height="280" rx="10" fill="url(#exe-grad)" stroke="#444" stroke-width="2"/>
+  <text x="450" y="200" text-anchor="middle" font-size="18" font-weight="bold" fill="#fff">parcour.exe</text>
+  <text x="450" y="218" text-anchor="middle" font-size="11" fill="#aaa">Single self-contained executable (~255 KB) · Static CRT (/MT)</text>
+
+  <!-- ── Engine lib ── -->
+  <rect x="55" y="235" width="240" height="200" rx="8" fill="#0d47a1" fill-opacity="0.85" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="175" y="258" text-anchor="middle" class="box-label">engine.lib</text>
+  <text x="175" y="274" text-anchor="middle" font-size="10" fill="#90caf9">Reusable 2D Engine</text>
+
+  <!-- Engine modules -->
+  <rect x="70" y="286" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="120" y="304" text-anchor="middle" class="module">math.c/h</text>
+
+  <rect x="180" y="286" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="230" y="304" text-anchor="middle" class="module">gravity.c/h</text>
+
+  <rect x="70" y="320" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="120" y="338" text-anchor="middle" class="module">physics.c/h</text>
+
+  <rect x="180" y="320" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="230" y="338" text-anchor="middle" class="module">input.c/h</text>
+
+  <rect x="70" y="354" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="120" y="372" text-anchor="middle" class="module">renderer.c/h</text>
+
+  <rect x="180" y="354" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="230" y="372" text-anchor="middle" class="module">log.c/h</text>
+
+  <rect x="70" y="388" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="120" y="406" text-anchor="middle" class="module">types.h</text>
+
+  <rect x="180" y="388" width="100" height="26" rx="4" fill="#1565c0"/>
+  <text x="230" y="406" text-anchor="middle" class="module">stb_image.h</text>
+
+  <!-- ── Game code ── -->
+  <rect x="330" y="235" width="240" height="200" rx="8" fill="#b71c1c" fill-opacity="0.85" stroke="#c62828" stroke-width="1.5"/>
+  <text x="450" y="258" text-anchor="middle" class="box-label">Game Code</text>
+  <text x="450" y="274" text-anchor="middle" font-size="10" fill="#ef9a9a">PoP-inspired Mechanics</text>
+
+  <rect x="345" y="286" width="100" height="26" rx="4" fill="#c62828"/>
+  <text x="395" y="304" text-anchor="middle" class="module">game.c</text>
+
+  <rect x="455" y="286" width="100" height="26" rx="4" fill="#c62828"/>
+  <text x="505" y="304" text-anchor="middle" class="module">character.c/h</text>
+
+  <rect x="345" y="320" width="100" height="26" rx="4" fill="#c62828"/>
+  <text x="395" y="338" text-anchor="middle" class="module">level.c/h</text>
+
+  <rect x="455" y="320" width="100" height="26" rx="4" fill="#c62828"/>
+  <text x="505" y="338" text-anchor="middle" class="module">sprite.c/h</text>
+
+  <rect x="345" y="354" width="210" height="26" rx="4" fill="#c62828"/>
+  <text x="450" y="372" text-anchor="middle" class="module">resource.h + sprites.rc</text>
+
+  <!-- Character FSM detail -->
+  <rect x="345" y="392" width="210" height="30" rx="4" fill="#d32f2f" fill-opacity="0.5" stroke="#e57373" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="450" y="406" text-anchor="middle" font-size="10" fill="#ffcdd2">15-state FSM</text>
+  <text x="450" y="418" text-anchor="middle" font-size="9" fill="#ef9a9a">idle · run · jump · fall · crouch · wall-slide · ledge-grab …</text>
+
+  <!-- ── Sprites resource ── -->
+  <rect x="605" y="235" width="240" height="200" rx="8" fill="#e65100" fill-opacity="0.85" stroke="#ef6c00" stroke-width="1.5"/>
+  <text x="725" y="258" text-anchor="middle" class="box-label">sprites.res</text>
+  <text x="725" y="274" text-anchor="middle" font-size="10" fill="#ffcc80">Embedded Resources</text>
+
+  <rect x="620" y="290" width="210" height="30" rx="4" fill="#ef6c00"/>
+  <text x="725" y="310" text-anchor="middle" class="module">44 PNG sprite frames</text>
+
+  <rect x="620" y="330" width="210" height="30" rx="4" fill="#ef6c00"/>
+  <text x="725" y="350" text-anchor="middle" class="module">RCDATA resources (IDB_*)</text>
+
+  <text x="725" y="390" text-anchor="middle" font-size="10" fill="#ffcc80">Loaded at runtime via</text>
+  <text x="725" y="405" text-anchor="middle" font-size="10" fill="#ffcc80">FindResource / LoadResource</text>
+  <text x="725" y="420" text-anchor="middle" font-size="10" fill="#ffcc80">or fopen (dev fallback)</text>
+
+  <!-- Dependency arrow: Game → Engine -->
+  <line x1="330" y1="335" x2="297" y2="335" stroke="#3a86ff" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="313" y="328" text-anchor="middle" class="arrow-label">links</text>
+
+  <!-- Dependency arrow: Game → Sprites -->
+  <line x1="570" y1="308" x2="618" y2="308" stroke="#ff9800" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="594" y="300" text-anchor="middle" class="arrow-label">loads</text>
+
+  <!-- ═══════════ TEST RUNNER ═══════════ -->
+  <rect x="30" y="475" width="540" height="120" rx="10" fill="#4a148c" fill-opacity="0.85" stroke="#6a1b9a" stroke-width="2"/>
+  <text x="300" y="500" text-anchor="middle" font-size="16" font-weight="bold" fill="#fff">test_runner.exe</text>
+  <text x="300" y="518" text-anchor="middle" font-size="11" fill="#ce93d8">53 Automated Tests · Custom Framework · Runs on Every Build</text>
+
+  <!-- Test categories -->
+  <rect x="45"  y="530" width="70" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="80"  y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Math (5)</text>
+
+  <rect x="123" y="530" width="80" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="163" y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Gravity (4)</text>
+
+  <rect x="211" y="530" width="80" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="251" y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Physics (4)</text>
+
+  <rect x="299" y="530" width="92" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="345" y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Character (8)</text>
+
+  <rect x="399" y="530" width="72" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="435" y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Level (5)</text>
+
+  <rect x="479" y="530" width="80" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="519" y="547" text-anchor="middle" font-size="10" fill="#e1bee7">Integr. (9)</text>
+
+  <rect x="45"  y="562" width="92" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="91"  y="579" text-anchor="middle" font-size="10" fill="#e1bee7">Regression (5)</text>
+
+  <rect x="145" y="562" width="92" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="191" y="579" text-anchor="middle" font-size="10" fill="#e1bee7">Sweep (4)</text>
+
+  <rect x="245" y="562" width="92" height="24" rx="4" fill="#6a1b9a"/>
+  <text x="291" y="579" text-anchor="middle" font-size="10" fill="#e1bee7">Replay + more</text>
+
+  <!-- Link arrows from test_runner to engine and game -->
+  <line x1="200" y1="475" x2="200" y2="457" stroke="#ce93d8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="208" y="468" class="arrow-label" fill="#9c27b0">links engine.lib</text>
+
+  <line x1="400" y1="475" x2="400" y2="457" stroke="#ce93d8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="408" y="468" class="arrow-label" fill="#9c27b0">links game modules</text>
+
+  <!-- ═══════════ Win32 / OS box ═══════════ -->
+  <rect x="605" y="475" width="265" height="120" rx="10" fill="#37474f" fill-opacity="0.85" stroke="#546e7a" stroke-width="2"/>
+  <text x="737" y="500" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Win32 API</text>
+  <text x="737" y="518" text-anchor="middle" font-size="10" fill="#b0bec5">Platform Layer</text>
+
+  <rect x="620" y="530" width="100" height="22" rx="3" fill="#546e7a"/>
+  <text x="670" y="546" text-anchor="middle" font-size="10" fill="#cfd8dc">GDI / StretchDIBits</text>
+
+  <rect x="620" y="558" width="100" height="22" rx="3" fill="#546e7a"/>
+  <text x="670" y="574" text-anchor="middle" font-size="10" fill="#cfd8dc">WndProc / Input</text>
+
+  <rect x="730" y="530" width="125" height="22" rx="3" fill="#546e7a"/>
+  <text x="792" y="546" text-anchor="middle" font-size="10" fill="#cfd8dc">Resources (RCDATA)</text>
+
+  <rect x="730" y="558" width="125" height="22" rx="3" fill="#546e7a"/>
+  <text x="792" y="574" text-anchor="middle" font-size="10" fill="#cfd8dc">QueryPerformance*</text>
+
+  <!-- Arrow from exe to Win32 -->
+  <line x1="737" y1="455" x2="737" y2="473" stroke="#78909c" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="766" y="468" class="arrow-label" fill="#78909c">calls</text>
+
+</svg>
