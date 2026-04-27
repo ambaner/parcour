@@ -7,10 +7,14 @@
  */
 
 #define STB_IMAGE_IMPLEMENTATION
+#include <math.h>        /* stb_image uses pow() — must precede its include */
+#pragma warning(push)
+#pragma warning(disable: 4013)  /* 'pow' undefined — stb_image is 3rd-party */
 #define STBI_ONLY_PNG
 #define STBI_NO_STDIO   /* we'll use stbi_load for simplicity, re-enable */
 #undef STBI_NO_STDIO
 #include "stb_image.h"
+#pragma warning(pop)
 
 #include "sprite.h"
 #include "renderer.h"
