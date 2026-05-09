@@ -190,6 +190,7 @@ void character_update(Character *p) {
 
     p->stateTimer++;
     if (p->grabCooldown > 0) p->grabCooldown--;
+    if (p->stepCooldown > 0) p->stepCooldown--;
 
     /* ── Ground states ────────────────────────────────────────────── */
     if (p->onGround) {
@@ -379,8 +380,25 @@ void character_update(Character *p) {
                 /* Finished climbing — move character on top of the ledge.
                  * Shift 2 tiles horizontally (= RENDER_W) so the center
                  * of mass lands solidly on the platform. */
-                p->x += (float)(p->facing * RENDER_W);
-                p->y -= (float)(RENDER_H * 3 / 4);
+                float destX = p->x + (float)(p->facing * RENDER_W);
+                float destY = p->y - (float)(RENDER_H * 3 / 4);
+
+                /* Validate destination isn't fully blocked — check mid/foot
+                 * body probes. Skip head check since the ledge surface we're
+                 * climbing onto may have tiles directly above. */
+                int destBodyL = (int)destX + 8;
+                int destBodyR = (int)destX + RENDER_W - 9;
+                int destFoot  = (int)destY + RENDER_H - 2;
+                int destMid   = (int)destY + RENDER_H / 2;
+                if (tile_solid(destBodyL, destFoot) && tile_solid(destBodyR, destFoot) &&
+                    tile_solid(destBodyL, destMid)  && tile_solid(destBodyR, destMid)) {
+                    /* Destination fully blocked — abort climb, fall back */
+                    set_state(p, STATE_CORNER_GRAB);
+                    break;
+                }
+
+                p->x = destX;
+                p->y = destY;
 
                 /* Safety nudge: if center-foot is over air after teleport,
                  * nudge BACKWARD (toward the wall we climbed) first, since
@@ -504,6 +522,67 @@ void character_update(Character *p) {
     /* ── Collision resolution ── */
     int hitWall = physics_collide_horizontal(&p->x, &p->vx, p->y);
 
+    /* ── Auto-step-up: foot-level barrier (1 tile high) ──
+     * When grounded and walking into a single-tile barrier, automatically
+     * step up onto it without requiring a jump. Checks:
+     * 1. The barrier is only 1 tile tall (solid at foot row, air one row up)
+     * 2. Enough vertical clearance above the step for the full body */
+    if (hitWall && p->onGround && inputDir == p->facing &&
+        p->stepCooldown == 0 &&
+        (p->state == STATE_WALK || p->state == STATE_RUNNING)) {
+        /* Probe one tile ahead of the leading body edge into the wall */
+        int probeX;
+        if (inputDir > 0)
+            probeX = (int)p->x + RENDER_W - 9 + TILE_SIZE / 2;
+        else
+            probeX = (int)p->x + 8 - TILE_SIZE / 2;
+
+        int footRow = ((int)p->y + RENDER_H - 2) / TILE_SIZE;
+        int aboveRow = footRow - 1;
+
+        /* Foot row is solid but the row above is air → 1-tile step */
+        if (tile_solid(probeX, footRow * TILE_SIZE + TILE_SIZE / 2) &&
+            !tile_solid(probeX, aboveRow * TILE_SIZE + TILE_SIZE / 2)) {
+            /* Verify clearance: full body height above the step */
+            float stepY = (float)(footRow * TILE_SIZE) - RENDER_H;
+            int clearance = 1;
+            for (int h = 4; h < RENDER_H - 2; h += 16) {
+                if (tile_solid(probeX, (int)stepY + h)) {
+                    clearance = 0;
+                    break;
+                }
+            }
+            if (clearance) {
+                /* Position character centered on the step tile */
+                int stepCol = probeX / TILE_SIZE;
+                p->y = stepY;
+                p->x = (float)(stepCol * TILE_SIZE) - RENDER_W / 2.0f + TILE_SIZE / 2.0f;
+                p->vy = 0;
+                p->vx = 0;
+                p->onGround = 1;
+                p->stepCooldown = 20;  /* pause before next step-up */
+                set_state(p, STATE_IDLE);
+                game_log("AUTO-STEP-UP at y=%.1f x=%.1f (step row=%d col=%d)",
+                         p->y, p->x, footRow, stepCol);
+            }
+        }
+    }
+
+    /* Hard clamp to level bounds — prevents any escape regardless of
+     * velocity or collision probe gaps at the border */
+    if (p->x < (float)TILE_SIZE) {
+        p->x = (float)TILE_SIZE;
+        p->vx = 0;
+    }
+    if (p->x > (float)((LEVEL_COLS - 1) * TILE_SIZE - RENDER_W)) {
+        p->x = (float)((LEVEL_COLS - 1) * TILE_SIZE - RENDER_W);
+        p->vx = 0;
+    }
+    if (p->y < (float)TILE_SIZE) {
+        p->y = (float)TILE_SIZE;
+        p->vy = 0;
+    }
+
     /* Post-collision wall-slide: if we hit a wall while airborne & falling,
      * and the player is pressing into the wall, trigger wall-slide.
      * This is more reliable than the pre-collision probe because the
@@ -516,10 +595,10 @@ void character_update(Character *p) {
         set_state(p, STATE_WALL_SLIDE);
     }
 
-    /* PoP-style ground ledge grab: walking/running near a head-height
-     * platform edge → reach up and grab it.  Does NOT require hitWall
-     * because thin platforms don't block horizontal collision.  Instead
-     * we probe for a head-level ledge when grounded and pressing forward. */
+    /* PoP-style ground ledge grab: walking/running into a structure at
+     * head height → reach up and grab its top edge. The grab target must
+     * be a wall that also blocks at mid-body (prevents jailbreaking from
+     * enclosed spaces by grabbing thin ceiling tiles). */
     if (p->onGround && inputDir == p->facing &&
         p->grabCooldown == 0 &&
         (p->state == STATE_WALK || p->state == STATE_RUNNING ||

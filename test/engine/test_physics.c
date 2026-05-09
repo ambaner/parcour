@@ -38,9 +38,12 @@ static void test_vertical_collision_center_foot(void) {
 
 static void test_horizontal_collision_wall_blocks(void) {
     TEST_BEGIN("physics: horizontal collision blocks at walls");
-    float x = 38.0f * TILE_SIZE - RENDER_W + 5;
+    /* Character at y=20*TILE_SIZE has head at row 20, feet at row 23.
+     * All those rows at col 38 are air; col 39 is the boundary wall.
+     * Moving right should be blocked when right edge enters col 39. */
+    float x = 1190.0f;
     float vx = 6.0f;
-    float y = 28.0f * TILE_SIZE;
+    float y = 20.0f * TILE_SIZE;
 
     int hit = physics_collide_horizontal(&x, &vx, y);
     ASSERT_EQ_INT(hit, 1);
@@ -48,11 +51,29 @@ static void test_horizontal_collision_wall_blocks(void) {
     TEST_PASS();
 }
 
-static void test_horizontal_collision_thin_platform_passable(void) {
-    TEST_BEGIN("physics: thin platforms don't block horizontal movement");
-    float x = 32.0f * TILE_SIZE;
-    float vx = 4.0f;
+static void test_horizontal_collision_thin_platform_at_foot_blocks(void) {
+    TEST_BEGIN("physics: solid tiles at foot level block horizontal movement");
+    /* Character at y=8*TILE_SIZE has feet at row 11.  Default level
+     * has a thin platform at row 11 cols 33-37.  Moving right from
+     * col 31 should be blocked when right edge enters col 33. */
+    float x = 31.0f * TILE_SIZE;
+    float vx = 10.0f;
     float y = 8.0f * TILE_SIZE;
+
+    int hit = physics_collide_horizontal(&x, &vx, y);
+    ASSERT_EQ_INT(hit, 1);
+    ASSERT_EQ_FLOAT(vx, 0.0f, 0.001f);
+    TEST_PASS();
+}
+
+static void test_horizontal_collision_open_air_passable(void) {
+    TEST_BEGIN("physics: movement in open air is not blocked");
+    /* Character at y=5*TILE_SIZE: head at row 5, feet at row 8.
+     * All tiles in that region around col 15 are air in the default
+     * level, so horizontal movement should proceed freely. */
+    float x = 15.0f * TILE_SIZE;
+    float vx = 4.0f;
+    float y = 5.0f * TILE_SIZE;
 
     int hit = physics_collide_horizontal(&x, &vx, y);
     ASSERT_EQ_INT(hit, 0);
@@ -77,6 +98,7 @@ void run_physics_tests(void) {
     test_vertical_collision_landing();
     test_vertical_collision_center_foot();
     test_horizontal_collision_wall_blocks();
-    test_horizontal_collision_thin_platform_passable();
+    test_horizontal_collision_thin_platform_at_foot_blocks();
+    test_horizontal_collision_open_air_passable();
     test_ceiling_collision();
 }

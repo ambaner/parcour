@@ -1,6 +1,6 @@
 # Parcour — Design Document
 
-> **Version:** 1.0  
+> **Version:** 1.1  
 > **Date:** April 2026  
 > **Author:** ambaner  
 > **Status:** Active Development  
@@ -88,7 +88,7 @@ Stage 4:  cl.exe links tests + engine.lib              → test_runner.exe (auto
 
 On success you'll see:
 ```
-  Results: 52 passed, 0 failed, 52 total
+  Results: 81 passed, 0 failed, 81 total
 Done.
 ```
 
@@ -136,8 +136,11 @@ Unlike tutorials that use game engines, this project builds every system from sc
 - **Tile-based collision** — AABB probes against a 40×30 integer grid
 - **State machine animation** — 15-state FSM driving sprite sheet playback
 - **Realistic gravity** — quadratic air drag producing asymptotic terminal velocity
-- **Wall vs. platform distinction** — thin platforms are passable horizontally, only blocking from above
+- **Full-body collision** — leading-edge-only horizontal checks at 5 body heights with overlap-aware filtering
+- **Tiered barrier interaction** — auto-step-up for foot-level barriers, manual jump for chest-level, pull-up for head-level
 - **PoP-style ledge mechanics** — corner-grab from air, head-height grab from ground, auto-climb on forward hold
+- **Level editor** — standalone GUI editor for `.parcour` level files with clearance warnings and enclosure validation
+- **Custom level loading** — command-line level file support (`parcour.exe mymap.parcour`)
 
 ---
 
@@ -150,10 +153,12 @@ Unlike tutorials that use game engines, this project builds every system from sc
 | G1 | Understand and implement PoP-style character movement physics | ✅ Done |
 | G2 | Implement realistic gravity with progressive acceleration and air drag | ✅ Done |
 | G3 | Build a 15-state character FSM covering idle, walk, run, jump, fall, crouch, slide, wall-slide, corner-grab, corner-climb, somersault, hard-landing | ✅ Done |
-| G4 | Implement tile-based collision that distinguishes walls from thin platforms | ✅ Done |
+| G4 | Implement full-body tile collision with leading-edge checks and overlap-aware filtering | ✅ Done |
 | G5 | Support PoP-style ledge grabs (air corner-grab + grounded head-ledge grab + auto-climb) | ✅ Done |
 | G6 | Provide diagnostic logging sufficient to trace and debug physics issues | ✅ Done |
 | G7 | Keep the codebase modular, readable, and educational | ✅ Done |
+| G8 | Level editor with `.parcour` file format, clearance warnings, and enclosure validation | ✅ Done |
+| G9 | Tiered barrier interaction (auto-step-up, manual jump, pull-up) | ✅ Done |
 
 ### Non-Goals
 
@@ -203,6 +208,8 @@ types.h          ← root header (WINDOWS.H + constants)
   ├── sprite.h/c       ← PNG loading + blitting (depends: renderer, stb_image)
   ├── input.h/c        ← keyboard state (depends: types)
   ├── level.h/c        ← tile map + queries (depends: renderer)
+  ├── levelfile.h/c    ← .parcour file format parser/writer (depends: level, log)
+  ├── levelgen.h/c     ← random maze generator (depends: level, log)
   ├── physics.h/c      ← collision resolution (depends: math, level)
   ├── character.h/c    ← state machine (depends: ALL above)
   └── game.c           ← entry point (depends: ALL above)
@@ -226,6 +233,7 @@ The source tree is split into **engine** (reusable, game-agnostic systems) and *
 Parcour/
 ├── build.bat               Build script (release, debug, test, clean)
 ├── src/
+│   ├── version.h           Shared version constants for all binaries (1.1.0.0)
 │   ├── engine/             Reusable engine systems → compiled into engine.lib
 │   │   ├── types.h         Root header — display constants, tile sizes, bounding box
 │   │   ├── math.c/.h       Pure math utilities (abs, clamp, lerp, sign, min, max)
@@ -234,30 +242,47 @@ Parcour/
 │   │   ├── input.c/.h      Keyboard state tracking with edge detection
 │   │   ├── renderer.c/.h   Framebuffer ownership + drawing primitives
 │   │   ├── log.c/.h        File-based debug logging with sub-ms timestamps
+│   │   ├── levelfile.c/.h  .parcour file format (parser, validator, writer)
+│   │   ├── levelgen.c/.h   Random maze level generator with connectivity checks
 │   │   └── stb_image.h     Third-party: single-header PNG decoder (public domain)
-│   └── game/               Game-specific logic → links against engine.lib
-│       ├── game.c          Entry point, window creation, game loop
-│       ├── character.c/.h  Character state machine + sprite animation driver
-│       ├── sprite.c/.h     PNG loading (resources + disk) + alpha-blended blitting
-│       ├── level.c/.h      Tile map data + collision queries + tile rendering
-│       ├── resource.h      Resource IDs for embedded sprite PNGs
-│       └── sprites.rc      Win32 resource script embedding all 44 PNGs
-├── test/                   Automated test harness (14 files, 52 tests)
+│   ├── game/               Game-specific logic → links against engine.lib
+│   │   ├── game.c          Entry point, window creation, game loop, CLI level loading
+│   │   ├── character.c/.h  Character state machine + sprite animation driver
+│   │   ├── sprite.c/.h     PNG loading (resources + disk) + alpha-blended blitting
+│   │   ├── level.c/.h      Tile map data + collision queries + tile rendering
+│   │   ├── resource.h      Resource IDs for embedded sprite PNGs
+│   │   ├── sprites.rc      Win32 resource script embedding all 44 PNGs
+│   │   └── version_game.rc VERSIONINFO resource for parcour.exe
+│   └── editor/             Standalone level editor (Win32 GUI)
+│       ├── editor.c        Tile painting, save/load .parcour, clearance warnings
+│       └── version_editor.rc VERSIONINFO resource for editor.exe
+├── levels/                 Custom level files (.parcour format)
+│   ├── test3.parcour       Sealed room (enclosure validation test)
+│   ├── test4.parcour       Low ceiling
+│   ├── test5.parcour       Single-tile walls
+│   └── test6.parcour       Staircase (auto-step-up test)
+├── test/                   Automated test harness (18 files, 81 tests)
 │   ├── test_framework.h    Macros (TEST_BEGIN, ASSERT_*, TEST_PASS) + extern globals
 │   ├── test_helpers.h/.c   Shared helpers (simulate, replay, invariant checker)
 │   ├── test_main.c         Entry point — parses --quick/--full, calls run_*_tests()
+│   ├── version_test.rc     VERSIONINFO resource for test_runner.exe
 │   ├── engine/             Engine module tests (link against engine.lib)
-│   │   ├── test_math.c     4 tests — math utilities
+│   │   ├── test_math.c     5 tests — math utilities
 │   │   ├── test_gravity.c  4 tests — gravity model
-│   │   └── test_physics.c  5 tests — collision resolution
+│   │   ├── test_physics.c  6 tests — collision resolution
+│   │   ├── test_levelfile.c 7 tests — .parcour parsing, validation, roundtrip
+│   │   └── test_levelgen.c 9 tests — maze gen, connectivity, enclosure detection
 │   └── game/               Game module tests (link against engine.lib + game sources)
-│       ├── test_character.c       13 tests — character FSM core
-│       ├── test_state_transitions.c  8 tests — edge-case transitions
+│       ├── test_character.c       8 tests — character FSM core
+│       ├── test_state_transitions.c  state transition edge cases + wall-jump
 │       ├── test_level.c           5 tests — tile queries
-│       ├── test_regression.c      4 tests — specific bug regressions
-│       ├── test_sweep.c           3 tests — position sweeps
-│       ├── test_replay.c          3 tests — deterministic input replay
-│       └── test_integration.c     3 tests — full action cycles
+│       ├── test_regression.c      regression tests for specific bugs
+│       ├── test_sweep.c           position sweeps with body-overlap pre-checks
+│       ├── test_input.c           4 tests — keyboard state
+│       ├── test_renderer.c        3 tests — framebuffer
+│       ├── test_sprite.c          3 tests — animation ticking
+│       ├── test_animation.c       7 tests — speed, looping, one-shot
+│       └── test_integration.c     9 tests — multi-system flows
 ├── doc/                    Documentation
 │   └── DESIGN.md           This document
 ├── sprites/                Pre-rendered PNG sprite frames (rvros asset pack)
@@ -282,29 +307,33 @@ Parcour/
 
 | Layer | Directory | Modules | Build Output |
 |-------|-----------|---------|-------------|
-| **Engine** | `src/engine/` | types, math, gravity, physics, input, renderer, log | `engine.lib` (static library) |
-| **Game** | `src/game/` | game, character, level, sprite | `parcour.exe` (links `engine.lib`) |
+| **Engine** | `src/engine/` | types, math, gravity, physics, input, renderer, log, levelfile, levelgen | `engine.lib` (static library) |
+| **Game** | `src/game/` | game, character, level, sprite | `parcour.exe` (links `engine.lib` + `sprites.res` + `version_game.res`) |
+| **Editor** | `src/editor/` | editor | `editor.exe` (links `engine.lib` + `version_editor.res`) |
+| **Tests** | `test/` | test_main, test_helpers, 14 test files | `test_runner.exe` (links `engine.lib` + `version_test.res`) |
 
-**Dependency direction**: Game → Engine (never the reverse). Engine modules only depend on other engine modules. The one intentional coupling is `physics.c` including `level.h` for tile-query functions (`tile_is_solid`, `tile_is_wall`); this interface could be abstracted behind function pointers if the engine were extracted into a fully standalone library.
+**Dependency direction**: Game → Engine (never the reverse). Engine modules only depend on other engine modules. The one intentional coupling is `physics.c` including `level.h` for tile-query functions (`tile_is_solid`); this interface could be abstracted behind function pointers if the engine were extracted into a fully standalone library.
 
 ### Build Pipeline
 
 The build proceeds in four stages, each depending on the previous:
 
 ```
-Stage 1: engine.lib          Stage 2: sprites.res          Stage 3: parcour.exe       Stage 4: test_runner.exe
-┌─────────────────┐          ┌──────────────────┐          ┌─────────────────────┐       ┌──────────────────────┐
-│ cl /c engine/*.c │  ──lib──▸│ rc sprites.rc    │  ──res──▸│ cl game/*.c          │       │ cl test/**/*.c        │
-│ lib /out:engine  │         │ → sprites.res    │         │ + engine.lib         │       │ + game/{char,spr,lvl} │
-│                  │         └──────────────────┘         │ + sprites.res        │       │ + engine.lib          │
-└─────────────────┘                                       │ + user32,gdi32,winmm │       └──────────────────────┘
-                                                          └─────────────────────┘
+Stage 1: engine.lib     Stage 2: sprites.res     Stage 2b: version *.res    Stage 3: parcour.exe       Stage 4: test_runner.exe
+┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐     ┌─────────────────────┐    ┌──────────────────────┐
+│ cl /c engine/*.c │──▸  │ rc sprites.rc    │──▸  │ rc version_*.rc    │──▸  │ cl game/*.c          │    │ cl test/**/*.c        │
+│ lib /out:engine  │     │ → sprites.res    │     │ → version_game.res │     │ + engine.lib         │    │ + game/{char,spr,lvl} │
+│                  │     └──────────────────┘     │ → version_test.res │     │ + sprites.res        │    │ + engine.lib          │
+└─────────────────┘                               │ → version_editor   │     │ + version_game.res   │    │ + version_test.res    │
+                                                  └────────────────────┘     │ + user32,gdi32,winmm │    └──────────────────────┘
+                                                                             └─────────────────────┘
 ```
 
 - **Stage 1**: Engine sources are compiled to `.obj` files, then archived into `engine.lib` using `lib.exe`. This produces a reusable static library with no game dependencies.
 - **Stage 2**: The resource compiler (`rc.exe`) embeds all 44 sprite PNGs into `sprites.res` as `RCDATA` resources. Each PNG is assigned a numeric ID defined in `resource.h`, with animations grouped in blocks of 16 (e.g., `IDR_IDLE` = 164, frames 164–167).
-- **Stage 3**: Game sources (game.c, character.c, sprite.c, level.c) are compiled and linked against `engine.lib`, `sprites.res`, and Win32 system libraries to produce `parcour.exe`. The result is a **single self-contained executable** (~255 KB) with all sprites embedded — no loose files needed for deployment.
-- **Stage 4**: Test sources and game modules (character, sprite, level — but **not** game.c) are compiled and linked against the **same** `engine.lib` to produce `test_runner.exe`. Tests do not need sprites.res since they exercise logic, not rendering.
+- **Stage 2b**: Version info resources are compiled from `.rc` files that `#include "version.h"` for shared version constants (1.1.0.0). Each binary gets its own VERSIONINFO with file description, product name, and copyright. Debug builds define `_DEBUG` to set the `VS_FF_DEBUG` flag.
+- **Stage 3**: Game sources (game.c, character.c, sprite.c, level.c) are compiled and linked against `engine.lib`, `sprites.res`, `version_game.res`, and Win32 system libraries to produce `parcour.exe`. The result is a **single self-contained executable** (~255 KB) with all sprites and version info embedded — no loose files needed for deployment.
+- **Stage 4**: Test sources and game modules (character, sprite, level — but **not** game.c) are compiled and linked against the **same** `engine.lib` and `version_test.res` to produce `test_runner.exe`. Tests do not need sprites.res since they exercise logic, not rendering.
 
 ### Test Directory Organization
 
@@ -313,8 +342,8 @@ Tests mirror the source tree split:
 | Directory | Files | What's Tested |
 |-----------|------:|---------------|
 | `test/` | 4 | Shared infrastructure: entry point, framework macros, helper functions |
-| `test/engine/` | 3 | Engine modules: math (4), gravity (4), physics (5) |
-| `test/game/` | 7 | Game modules: character (13), state transitions (8), level (5), regression (4), sweep (3), replay (3), integration (3) |
+| `test/engine/` | 5 | Engine modules: math (5), gravity (4), physics (6), levelfile (7), levelgen (9) |
+| `test/game/` | 9 | Game modules: character (8), state transitions, level (5), regression, sweep, input (4), renderer (3), sprite (3), animation (7), integration (9) |
 
 **Build system**: The compiler receives `/I"src/engine"` and `/I"src/game"` as include paths, so all `#include` directives use bare filenames (e.g., `#include "math.h"`) regardless of which sub-folder the file lives in. Test files additionally get `/I"test"` for the shared test headers.
 
@@ -328,12 +357,15 @@ Tests mirror the source tree split:
 | `engine/input.c` | Engine | 37 | Keyboard state |
 | `engine/renderer.c` | Engine | 120 | Framebuffer + draw primitives |
 | `engine/gravity.c` | Engine | 51 | Gravity model |
-| `engine/physics.c` | Engine | 101 | Collision resolution |
-| `game/game.c` | Game | 194 | Window + game loop |
-| `game/character.c` | Game | 496 | State machine (largest file) |
+| `engine/physics.c` | Engine | 150 | Collision resolution (leading-edge + overlap-aware) |
+| `engine/levelfile.c` | Engine | ~200 | .parcour file format parser/writer |
+| `engine/levelgen.c` | Engine | ~180 | Random maze generator |
+| `game/game.c` | Game | 220 | Window + game loop + CLI level loading |
+| `game/character.c` | Game | 680 | State machine (largest file) |
 | `game/sprite.c` | Game | 120 | PNG load + alpha blit |
 | `game/level.c` | Game | 165 | Tile map + collision queries |
-| **Total** | | **~1,484** | Pure C, no generated code |
+| `editor/editor.c` | Editor | ~400 | Level editor GUI |
+| **Total** | | **~2,460** | Pure C, no generated code |
 
 ---
 
@@ -432,23 +464,37 @@ A static 40×30 integer grid where `1 = solid`, `0 = air`. The level is designed
 
 | Function | Purpose |
 |----------|---------|
-| `tile_solid(px, py)` | Is the tile at pixel position solid? (any type) |
-| `tile_wall(px, py)` | Is it a **wall** (solid + vertically adjacent solid)? |
+| `tile_solid(px, py)` | Is the tile at pixel position solid? (OOB returns 1) |
+| `tile_wall(px, py)` | Is it a **wall** (solid + vertically adjacent solid)? Used for wall-slide trigger |
 | `tile_wall_beside(x, y, facing)` | Is there a wall next to the character? |
 | `tile_ledge_nearby(x, y, facing, &grabY)` | Airborne corner-grab probe |
 | `tile_head_ledge(x, y, facing, &grabY)` | Grounded head-height grab probe |
 
-**The wall vs. platform distinction** is a critical architectural decision (see §15.2).
+**Note:** `tile_wall()` is no longer used for horizontal collision (see §8.3). Horizontal collision now uses `tile_solid()` at all body heights with overlap-aware filtering. `tile_wall()` remains for wall-slide triggering.
 
 ### 5.9 `engine/physics.c` — Collision Resolution [Engine]
 
 Three collision passes run every frame in order:
 
-1. **Horizontal** (`physics_collide_horizontal`) — probes at mid-body and below using `tile_wall` (not `tile_solid`). Thin platforms don't block horizontal movement. Returns `hitWall` flag.
-2. **Vertical** (`physics_collide_vertical`) — center-foot-only landing detection. Character must have their center of mass over solid ground to land. Calls ceiling collision if rising.
-3. **Ceiling** (`physics_collide_ceiling`) — head probes at left and right. Stops upward velocity on impact.
+1. **Horizontal** (`physics_collide_horizontal`) — Leading-edge-only checks using `tile_solid()` at 5 body heights (head, upper, mid, lower, foot). Only blocks when the character would enter a **new** solid tile not already overlapped at the current position. Returns `hitWall` flag.
+2. **Vertical** (`physics_collide_vertical`) — Center-foot-only landing detection. Character must have their center of mass over solid ground to land. Calls ceiling collision if rising.
+3. **Ceiling** (`physics_collide_ceiling`) — Sweeps across all tile columns overlapped by the character's width. Stops upward velocity if any tile directly above the head is solid.
 
-### 5.10 `game/character.c` — State Machine [Game]
+### 5.10 `engine/levelfile.c` — Level File Format [Engine]
+
+Handles reading/writing the `.parcour` binary file format:
+- **Parsing**: `levelfile_load(path, level_out)` — reads 40×30 tile grid from `.parcour` file
+- **Validation**: checks magic number, dimensions, spawn clearance (2×4 tiles of air at spawn)
+- **Writing**: `levelfile_save(path, level)` — serializes tile grid with header
+
+### 5.11 `engine/levelgen.c` — Random Level Generator [Engine]
+
+Generates random maze-like levels with guaranteed properties:
+- **Connectivity**: all air regions are reachable (flood-fill verification)
+- **Enclosure**: boundary walls on all four sides (row 0, row 29, col 0, col 39)
+- **Spawn clearance**: guaranteed 2×4 air region at spawn point
+
+### 5.12 `game/character.c` — State Machine [Game]
 
 The heart of the project. A 15-state FSM that processes input, drives animation, and coordinates with physics. See §9 for the full state diagram.
 
@@ -471,6 +517,7 @@ typedef struct {
     int jumpHoldFrames;    // frames of held jump (variable jump height)
     float landingVy;       // vy at moment of landing (for tier classification)
     int grabCooldown;      // frames before corner-grab can re-trigger
+    int stepCooldown;      // frames before auto-step-up can re-trigger (20f)
 } Character;
 ```
 
@@ -495,10 +542,11 @@ typedef struct {
 ## 7. Game Loop and Frame Pipeline
 
 ```
-WinMain
+WinMain(argc: optional .parcour file path)
   ├── game_log_init()
   ├── character_load_sprites()    ← load all PNG sprite sheets
   ├── character_init()            ← set starting position
+  ├── if (argv[1]) levelfile_load(argv[1])  ← load custom level from CLI
   ├── CreateWindowW()             ← WS_OVERLAPPEDWINDOW, resizable + maximizable
   │
   └── LOOP (16ms / 60fps):
@@ -562,45 +610,68 @@ Character Bounding Box (64 × 128 px)
 ┌──────────────────────────────────┐  ← y
 │  headL(+10)         headR(-11)   │  ← headY = y + 4
 │                                  │
-│                                  │  ← upY = y + H/4
+│                                  │  ← upperY = y + H/4
 │                                  │
 │  midL(+8)           midR(-9)     │  ← midY = y + H/2
 │                                  │
-│  lowL(+8)           lowR(-9)     │  ← lowY = y + 3H/4
+│  lowL(+8)           lowR(-9)     │  ← lowerY = y + 3H/4
 │                                  │
 │          footC(+W/2)             │  ← footY = y + H
 └──────────────────────────────────┘
 ```
 
-**Horizontal collision** uses mid, low, and foot probes with `tile_wall()`.  
+**Horizontal collision** probes the leading edge at 5 heights (head, upper, mid, lower, foot) using `tile_solid()` with overlap-aware filtering.  
 **Vertical collision** uses only `footC` (center foot) with `tile_solid()`.  
-**Ceiling collision** uses headL and headR with `tile_solid()`.
+**Ceiling collision** sweeps all tile columns overlapped by the character's width at `headY`.
 
-### 8.3 Wall vs. Platform Distinction
+### 8.3 Full-Body Horizontal Collision with Overlap-Aware Filtering
 
-This is the key innovation of the collision system:
+The horizontal collision system evolved through 6 iterations (see §17.7). The current design uses **leading-edge-only** checks at **all 5 body heights** with an **overlap-aware filter** that prevents the character from getting stuck when already inside a solid tile (e.g., under a ceiling platform):
 
 ```c
-int tile_wall(int px, int py) {
-    if (!tile_solid(px, py)) return 0;
-    return tile_solid(px, py - TILE_SIZE) || tile_solid(px, py + TILE_SIZE);
+int physics_collide_horizontal(float *x, float *vx, float y) {
+    float newX = *x + *vx;
+    int leadingNew = (*vx > 0) ? (int)(newX + RENDER_W - 1) : (int)newX;
+    int leadingCur = (*vx > 0) ? (int)(*x + RENDER_W - 1) : (int)*x;
+
+    float heights[] = { y + 4, y + H/4, y + H/2, y + 3*H/4, y + H - 1 };
+    for (int i = 0; i < 5; i++) {
+        if (tile_solid(leadingNew, heights[i])) {
+            // Only block if entering a NEW solid tile not already overlapped
+            if (!tile_solid(leadingCur, heights[i])) {
+                *vx = 0;
+                return 1;  // hitWall
+            }
+        }
+    }
+    *x = newX;
+    return 0;
 }
 ```
 
-A **wall** is a solid tile with at least one vertically adjacent solid tile (≥2 tiles tall). A **thin platform** is a solid tile with air above and below (1 tile thick).
+**Key design decisions:**
 
-| Query | Walls | Thin Platforms |
-|-------|:-----:|:--------------:|
-| `tile_solid()` | ✅ | ✅ |
-| `tile_wall()` | ✅ | ❌ |
+1. **Leading-edge-only**: Only the edge in the direction of movement is checked. This prevents the trailing edge from blocking movement when the character legitimately overlaps solid tiles behind them.
 
-**Implications:**
-- Horizontal collision uses `tile_wall` → character passes through thin platforms from the side
-- Vertical collision uses `tile_solid` → character lands on thin platforms from above
-- Wall-slide uses `tile_wall` → only triggers against real walls
-- This is the classic "one-way platform" pattern
+2. **All 5 body heights**: Unlike the earlier mid+low+foot-only approach, checking at all heights (including head) prevents the character from walking through walls that are only 1 tile wide at head level.
 
-### 8.4 Center-Foot Landing Rule
+3. **Overlap-aware filter**: The critical innovation — when a tile IS solid at the new position, we also check if the CURRENT position is solid at the same height. If yes, the character is already overlapping that solid (e.g., a ceiling platform above their head) and blocking would trap them. Only genuinely NEW solid-tile entries are blocked.
+
+**Why this is needed**: After corner-climbing to a position under ceiling tiles, the character's head overlaps those ceiling tiles. Without the overlap filter, horizontal movement would be blocked in both directions (head probe hits solid everywhere), permanently trapping the character.
+
+### 8.4 Barrier Interaction Tiers
+
+When the character walks into a barrier while grounded, the response depends on barrier height:
+
+| Barrier Height | Body Probe | Response |
+|---------------|------------|----------|
+| **Foot-level** (1 tile) | Only foot probe hits | Auto step-up: teleport up 1 tile + IDLE. 20-frame cooldown prevents staircase speed-running |
+| **Chest-level** (2-3 tiles) | Mid or lower probe hits | Hard stop: velocity zeroed, character must manually jump |
+| **Head-level** (wall at head height) | Head or upper probe hits, with ledge nearby | Pull-up: triggers `CORNER_GRAB` → `CORNER_CLIMB` |
+
+This creates a natural Prince of Persia feel where small obstacles are stepped over automatically, medium barriers require intentional jumps, and tall walls trigger the pull-up animation.
+
+### 8.5 Center-Foot Landing Rule
 
 Landing requires the character's **center** (x + RENDER_W/2) to be over solid ground. If the center of mass is past the edge, the character falls. This prevents the unrealistic "standing on air with one foot" artifact and eliminates edge-standing oscillation bugs.
 
@@ -654,6 +725,9 @@ Landing requires the character's **center** (x + RENDER_W/2) to be over solid gr
 
      Head-Ledge Grab (grounded + walking into head-height platform):
      WALK/RUNNING/STOPPING ──(tile_head_ledge)──→ CORNER_GRAB
+
+     Auto-Step-Up (grounded + walking into foot-level barrier):
+     WALK/RUNNING ──(foot-only hitWall + stepCooldown==0)──→ IDLE (y -= TILE_SIZE)
 ```
 
 ### State Table
@@ -699,18 +773,46 @@ Landing requires the character's **center** (x + RENDER_W/2) to be over solid gr
 
 The level is a 40×30 grid of integers stored as `int level[LEVEL_ROWS][LEVEL_COLS]`. Currently only two tile types exist: `0` (air) and `1` (solid).
 
-### Test Playground Layout
+### Default Level Layout
 
-The level is designed specifically to exercise all physics mechanics:
+The built-in level is designed specifically to exercise all physics mechanics:
 
 | Region | Columns | Rows | Purpose |
 |--------|---------|------|---------|
+| **Boundary Walls** | 0, 39 | all | Full-height solid walls enclosing the map |
+| **Boundary Ceiling/Floor** | all | 0, 29 | Full-width solid ceiling and floor |
 | **Left Tower** | 0-5 | 3-26 | Tall structure with cliff drop for hard-landing testing |
 | **Center Stairs** | 9-24 | 10-22 | Staggered platforms at various heights for jump testing |
-| **Right Ledge Chain** | 33-37 | 3-23 | Ascending thin platforms every 4 rows for corner-grab/climb testing |
+| **Right Ledge Chain** | 33-37 | 3,7,11,15,19,23 | Ascending thin platforms every 4 rows for corner-grab/climb testing |
 | **Right Wall** | 37 | 3-26+ | Continuous wall column for wall-slide testing |
-| **Ground Floor** | 0-39 | 29 | Full-width solid floor |
 | **Ground Platforms** | 0-7, 31-39 | 26 | Elevated ground sections with gap (hard-landing test) |
+| **Col 38** | 38 | most | Air gap between platform edges and boundary wall |
+
+### `.parcour` File Format
+
+Custom levels use a binary `.parcour` file format:
+- **Header**: magic number + 40×30 dimensions + spawn point coordinates
+- **Body**: 1200 bytes (40×30 tile grid, 1 byte per tile)
+- **Validation on load**: checks enclosure (solid boundary), spawn clearance (2×4 air at spawn)
+
+**CLI usage**: `parcour.exe mymap.parcour` loads a custom level instead of the default.
+
+### Level Editor
+
+A standalone Win32 GUI application (`editor/editor.c`) for creating `.parcour` files:
+- **Tile painting**: Left-click to place solid, right-click to erase
+- **Save/Load**: Saves/loads `.parcour` files via standard file dialogs
+- **Clearance warnings**: Highlights areas where the 2×4 character body wouldn't fit
+- **Enclosure validation**: Warns if boundary walls are incomplete
+- **Grid overlay**: Shows tile boundaries for precise placement
+
+### Random Level Generator
+
+`levelgen.c` generates random maze-like levels with guaranteed properties:
+- All air regions are connected (flood-fill verification)
+- Boundary walls on all four sides
+- Spawn point has guaranteed 2×4 tile clearance
+- Used by test harness for randomized collision testing
 
 ### Ledge Probe Functions
 
@@ -946,7 +1048,7 @@ The release build produces a **single self-contained executable** (`parcour.exe`
 
 ### Overview
 
-The project includes a comprehensive headless test suite split across **14 source files** in `test/`, organized by module. Tests run as a console application (`test_runner.exe`) and are automatically executed by `build.bat`. The suite contains **52 tests** across 9 categories, including invariant checking, position sweeps, bug regression tests, and deterministic replay scenarios.
+The project includes a comprehensive headless test suite split across **18 source files** in `test/`, organized by module. Tests run as a console application (`test_runner.exe`) and are automatically executed by `build.bat`. The suite contains **81 tests** across 12 categories, including invariant checking, position sweeps, bug regression tests, level file format tests, and maze generation tests.
 
 ### Test File Organization
 
@@ -960,17 +1062,22 @@ Test files mirror the `src/engine` and `src/game` split. Shared infrastructure s
 | `test_helpers.h` | — | Helper declarations, `InputFrame` struct, `REPEAT_INPUT`, `run_*_tests()` prototypes |
 | `test_helpers.c` | — | Shared helper implementations (`simulate`, `replay`, `check_invariants`, etc.) |
 | **test/engine/** | | |
-| `test_math.c` | 4 | `absf`, `clampf`, `signf`, `lerpf` |
+| `test_math.c` | 5 | `absf`, `clampf`, `signf`, `lerpf`, `minf/maxf` |
 | `test_gravity.c` | 4 | Acceleration, terminal velocity, air drag, landing tiers |
-| `test_physics.c` | 5 | Vertical/horizontal collision, thin platforms, ceiling |
+| `test_physics.c` | 6 | Vertical/horizontal collision, thin platforms, ceiling, overlap-aware filter |
+| `test_levelfile.c` | 7 | `.parcour` file parsing, validation, roundtrip, error handling |
+| `test_levelgen.c` | 9 | Maze generation, connectivity, enclosure detection, spawn clearance |
 | **test/game/** | | |
-| `test_character.c` | 13 | Core FSM: idle, walk, run, jump, fall, wall-slide, corner-grab, climb |
-| `test_state_transitions.c` | 8 | Edge-case transitions: TURNING, SLIDE, SOMERSAULT, CROUCH, lockout, wall-jump |
+| `test_character.c` | 8 | Core FSM: idle, walk, run, jump, fall, wall-slide, corner-grab, climb |
+| `test_state_transitions.c` | — | Edge-case transitions: TURNING, SLIDE, SOMERSAULT, CROUCH, lockout, wall-jump |
 | `test_level.c` | 5 | Tile queries, out-of-bounds, wall vs platform, head ledge |
-| `test_regression.c` | 4 | Specific bug regressions: edge-stuck, head-platform, grab cooldown, auto-climb |
-| `test_sweep.c` | 3 | Position sweeps across columns/rows, invariant sweeps |
-| `test_replay.c` | 3 | Deterministic input replay scenarios |
-| `test_integration.c` | 3 | Full action cycles, friction stop, direction reversal |
+| `test_regression.c` | — | Specific bug regressions: boundary wall block, grab cooldown, auto-climb, corner-climb escape |
+| `test_sweep.c` | — | Position sweeps with body-overlap pre-checks |
+| `test_input.c` | 4 | Keyboard state, edge detection |
+| `test_renderer.c` | 3 | Framebuffer clear, pixel put, fill rect |
+| `test_sprite.c` | 3 | Animation ticking, frame advance |
+| `test_animation.c` | 7 | Speed, looping, one-shot, frame clamping |
+| `test_integration.c` | 9 | Multi-system integration flows |
 
 Each `test_*.c` file contains `static` test functions plus a single public `run_*_tests()` entry point called from `test_main.c`. All test executables link against the **same `engine.lib`** produced in Stage 1 of the build, ensuring tests exercise the identical engine binary that ships in the game.
 
@@ -980,8 +1087,8 @@ The test runner supports two modes, selectable via command-line flag:
 
 | Mode | Flag | Tests | Use Case |
 |------|------|------:|----------|
-| **Quick** | `--quick` | 18 | Math, gravity, level, physics — no multi-frame simulation. Fast iteration. |
-| **Full** | `--full` (default) | 52 | Everything: state machine, sweeps, replays, regressions. CI/pre-commit. |
+| **Quick** | `--quick` | ~25 | Math, gravity, level, physics, levelfile — no multi-frame simulation. Fast iteration. |
+| **Full** | `--full` (default) | 81 | Everything: state machine, sweeps, regressions, level gen. CI/pre-commit. |
 
 Build script usage:
 ```
@@ -990,20 +1097,23 @@ build.bat fre quick        # quick tests only
 build.bat chk quick        # debug build + quick tests
 ```
 
-### Test Categories (52 tests)
+### Test Categories (81 tests)
 
 | Category | Tests | What's Covered |
 |----------|------:|----------------|
-| **Math** | 4 | absf, clampf, signf, lerpf |
+| **Math** | 5 | absf, clampf, signf, lerpf, minf/maxf |
 | **Gravity** | 4 | Acceleration, terminal velocity, air drag, landing tier classification |
 | **Level** | 5 | Out-of-bounds, solid/air tiles, wall vs platform, wall_beside, head_ledge |
-| **Physics** | 5 | Vertical landing, center-foot rule, wall blocking, thin platform pass-through, ceiling |
-| **Character FSM** | 13 | Idle, walk, run, stop, jump, fall-off-edge, oscillation, wall-slide, corner-grab, climb, auto-climb, hard landing |
-| **State Transitions** | 8 | TURNING flip, SLIDE from running, SOMERSAULT, CROUCH hold, HARD_LANDING lockout, WALL_SLIDE detach, wall-jump, CORNER_GRAB release |
-| **Regression** | 4 | Edge-stuck, head-platform walk-through, grab cooldown oscillation, auto-climb sequence ordering |
-| **Sweep / Property** | 3 | Free-fall from every column, walk-right from every row, invariant validation during falls |
-| **Replay** | 3 | Run→jump→land, walk→turn→walk symmetry, crouch→jump→land |
-| **Integration** | 3 | Full action cycles, friction stop, direction reversal |
+| **Physics** | 6 | Vertical landing, center-foot rule, wall blocking, thin platform pass-through, ceiling, overlap-aware filtering |
+| **Level File** | 7 | .parcour parsing, invalid file rejection, roundtrip save/load, spawn validation |
+| **Level Gen** | 9 | Maze generation, connectivity (flood fill), enclosure checks, spawn clearance |
+| **Character FSM** | 8 | Idle, walk, run, stop, jump, fall, wall-slide, corner-grab, climb |
+| **State Transitions** | — | TURNING flip, SLIDE, SOMERSAULT, CROUCH hold, HARD_LANDING lockout, wall-jump |
+| **Regression** | — | Boundary wall block, grab cooldown oscillation, auto-climb, corner-climb escape |
+| **Sweep / Property** | — | Position sweeps with body-overlap pre-checks, invariant validation |
+| **Input / Renderer / Sprite** | 10 | Keyboard edge detection, framebuffer ops, animation ticking |
+| **Animation** | 7 | Speed, looping, one-shot, frame clamping |
+| **Integration** | 9 | Multi-system flows, friction stop, direction reversal, full action cycles |
 
 ### Invariant Checker
 
@@ -1169,19 +1279,32 @@ game_log("Tile at (%d,%d) = col %d row %d solid=%d wall=%d",
 
 **Trade-off**: A single isolated solid tile (no neighbors in any direction) will be treated as a thin platform. This is acceptable for the current level design.
 
-### 15.3 No Head Probes in Horizontal Collision
+### 15.3 Full-Body Horizontal Collision with Overlap-Aware Filtering
 
-**Problem**: Head-level probes in horizontal collision caused the character to get stuck under overhead platforms (the probes hit the bottom of the platform and blocked movement).
+**Problem**: Earlier iterations either (a) used head probes and got stuck under overhead platforms, or (b) omitted head probes and allowed walking through head-height walls.
 
-**Decision**: Horizontal collision only checks mid-body and below. Head-level platform interaction is handled by `tile_head_ledge()` in the character state machine.
+**Decision**: Check all 5 body heights (head, upper, mid, lower, foot) but add an **overlap-aware filter**: if the character's CURRENT position is already solid at a given height, don't block horizontal movement at that height. Only block when entering a NEW solid tile.
 
-### 15.4 Grab Cooldown
+**Trade-off**: Slightly more complex logic, but solves both problems: the character can walk under ceiling platforms (already overlapping) while still being blocked by new walls at any body height. This went through 6 iterations (see §17.7) before arriving at the current design.
+
+### 15.4 Tiered Barrier Interaction
+
+**Problem**: All horizontal collisions resulted in a hard stop, making single-tile barriers (stairs) feel clunky and requiring tedious jumping.
+
+**Decision**: Three tiers of barrier response based on which body probes are blocked:
+- **Foot-only** (1-tile barrier): Auto step-up with 20-frame cooldown
+- **Mid/lower** (2-3 tile barrier): Hard stop, manual jump required
+- **Head/upper** (tall wall): Pull-up via corner-grab if ledge is nearby
+
+**Trade-off**: The auto-step-up is instant (no animation), which looks slightly unnatural. A future enhancement could add a step-up animation state.
+
+### 15.5 Grab Cooldown
 
 **Problem**: After falling off a ledge or releasing a grab, the character would immediately re-grab the same ledge.
 
 **Decision**: A `grabCooldown` counter (15-20 frames) prevents re-grabbing after releasing or falling off. This creates the natural feel of committing to a fall.
 
-### 15.5 Auto-Climb with Delay
+### 15.6 Auto-Climb with Delay
 
 **Problem**: When the head-ledge grab was combined with `inputDir == facing` for auto-climb, the grab animation was skipped (climb triggered on the very next frame because the player was still holding the arrow key).
 
@@ -1195,24 +1318,24 @@ game_log("Tile at (%d,%d) = col %d row %d solid=%d wall=%d",
 
 | Limitation | Impact | Potential Fix |
 |------------|--------|---------------|
-| Single static level | Limited test scenarios | Level loading from file, level editor |
 | No scrolling/camera | Level size = screen size | Camera module with smooth follow |
 | Software rendering | CPU-bound at high resolutions | Direct3D or OpenGL backend |
 | No sound | Silent gameplay | `PlaySound` or XAudio2 |
 | No enemies or hazards | Pure mechanics demo | Enemy AI module |
 | Fixed tile types (solid/air) | Limited level design | Tile type enum (spike, ladder, door, etc.) |
 | No gamepad support | Keyboard only | XInput integration |
+| Auto-step-up has no animation | Instant teleport looks unnatural | Step-up animation state |
 
 ### Potential Enhancements
 
 - **Scroll/Camera**: Follow the player across a level larger than the screen
-- **Level loading**: Parse level files (JSON, CSV, or Tiled TMX format)
 - **Tile variety**: Spikes (instant death), ladders (climb), doors (transition), crumbling floors
 - **Enemy AI**: Patrolling guards with simple state machines
 - **Health system**: HP + damage + death/respawn
 - **Combat**: Sword attacks using the available `adventurer-run-punch` sprites
 - **Sound effects**: Jump, land, grab, slide audio cues
 - **Particle effects**: Dust on landing, sparks on wall-slide
+- **Step-up animation**: Visual feedback for auto-step-up instead of instant teleport
 
 ---
 
@@ -1331,7 +1454,9 @@ Collision detection went through several iterations, each fixing bugs introduced
 
 5. **Grab cooldown**: After releasing or falling off a ledge, a 15-frame cooldown prevents immediate re-grabbing, which caused oscillation loops (grab → release → fall → grab → ...).
 
-**Lesson:** *Collision systems evolve by fixing the bugs they create. Each refinement solves one problem and reveals the next. The trick is to fix at the right level of abstraction — collision probes for physics bugs, state machine logic for behavioral bugs, cooldown timers for oscillation bugs.*
+6. **Full-body collision with overlap-aware filtering**: Re-added head probes (all 5 body heights) to prevent walking through head-height walls, but added an overlap-aware filter: if the character's current position is already solid at a probe height, don't block movement at that height. This solves the "stuck under ceiling" bug without removing head collision. Horizontal collision now uses `tile_solid()` at all heights instead of `tile_wall()` at mid+lower. Combined with leading-edge-only checks and the barrier interaction tiers (auto-step-up for foot-level, hard stop for chest-level, pull-up for head-level), this is the final iteration.
+
+**Lesson:** *Collision systems evolve by fixing the bugs they create. Each refinement solves one problem and reveals the next. The trick is to fix at the right level of abstraction — collision probes for physics bugs, state machine logic for behavioral bugs, cooldown timers for oscillation bugs, and overlap-aware filters for legitimately overlapping geometry.*
 
 ### 17.8 The Power of Logging
 
@@ -1355,9 +1480,11 @@ The log was especially critical because the game runs at 60fps — bugs that man
 | 3 | Mechner's rotoscoping was the secret to PoP's fluidity | Validated that we were right to use pre-animated sprites |
 | 4 | State machines should drive sprite *selection*, not sprite *generation* | Clean architecture separating logic from presentation |
 | 5 | Gravity needs air drag for realism | Falls feel weighted and dangerous instead of uniform |
-| 6 | Collision refinement is iterative — each fix reveals the next bug | Evolved through 5 iterations of collision logic |
+| 6 | Collision refinement is iterative — each fix reveals the next bug | Evolved through 6 iterations of collision logic |
 | 7 | Logging is the most powerful debugging tool for real-time systems | Found and fixed every physics bug via log analysis |
-| 8 | Modular architecture enables testability | 34 automated tests catch regressions on every build |
+| 8 | Modular architecture enables testability | 81 automated tests catch regressions on every build |
+| 9 | Overlap-aware filtering solves the "stuck under ceilings" class of bugs | Characters can legitimately overlap solid tiles they're already inside |
+| 10 | Tiered barrier interaction creates natural PoP-style movement flow | Small barriers stepped, medium barriers jumped, tall barriers pulled-up |
 
 ---
 
@@ -1407,6 +1534,7 @@ The log was especially critical because the game runs at 60fps — bugs that man
 |----------|------:|------------|
 | `LANDING_TICKS` | 8 | physics.h |
 | `TURN_TICKS` | 5 | physics.h |
+| `STEP_COOLDOWN` | 20 | character.c |
 | `FRAME_MS` | 16 | types.h |
 
 ---

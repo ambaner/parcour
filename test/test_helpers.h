@@ -46,5 +46,7 @@ void run_regression_tests(void);
 void run_sweep_tests(void);
 void run_replay_tests(void);
 void run_integration_tests(void);
+void run_levelfile_tests(void);
+void run_levelgen_tests(void);
 
 #endif /* TEST_HELPERS_H */

@@ -38,33 +38,56 @@ void physics_apply_friction(float *vx, float friction) {
 
 /* ── Horizontal collision ───────────────────────────────────────────── */
 /*
- * Check left/right collision at foot-level and mid-body.  Thin platforms
- * at head height are intentionally passable from the side — you jump
- * on top of them.  Full-height walls still block at both probes.
+ * Check left/right collision across the character's height.
+ * ALL heights use tile_solid — the character cannot pass through any
+ * solid tile at any body height.
+ *
+ * Only the LEADING edge is checked (the side toward movement direction).
+ * This prevents "stuck" scenarios where the character lands from a jump
+ * with its body partially overlapping a barrier — it can still walk
+ * away from the overlap because the trailing edge isn't checked.
  */
 int physics_collide_horizontal(float *x, float *vx, float y) {
+    if (*vx == 0.0f) return 0;
+
     float nx = *x + *vx;
-    int bodyL = (int)nx + 8;
-    int bodyR = (int)nx + RENDER_W - 9;
-    int headY = (int)y + 4;                    /* top of bounding box    */
-    int upY   = (int)y + RENDER_H / 4;        /* upper quarter          */
-    int midY  = (int)y + RENDER_H / 2;        /* middle                 */
-    int lowY  = (int)y + RENDER_H * 3 / 4;    /* lower quarter          */
-    int footY = (int)y + RENDER_H - 2;        /* foot level             */
+    int heights[5];
+    heights[0] = (int)y + 4;            /* head */
+    heights[1] = (int)y + RENDER_H / 4; /* up */
+    heights[2] = (int)y + RENDER_H / 2; /* mid */
+    heights[3] = (int)y + RENDER_H * 3 / 4; /* low */
+    heights[4] = (int)y + RENDER_H - 2; /* foot */
 
-    /* Only check mid-body and below for horizontal wall collision.
-     * Use tile_wall (not tile_solid) so thin 1-tile platforms don't
-     * block horizontal movement — they only block from above (landing).
-     * Head-level platform interaction is handled in character.c. */
-    (void)headY;
-    (void)upY;
-
-    if (tile_wall(bodyL, footY) || tile_wall(bodyR, footY) ||
-        tile_wall(bodyL, lowY)  || tile_wall(bodyR, lowY)  ||
-        tile_wall(bodyL, midY)  || tile_wall(bodyR, midY)) {
-        *vx = 0;
-        return 1;
+    if (*vx > 0.0f) {
+        /* Moving right — check right edge of new position */
+        int newR = (int)nx + RENDER_W - 9;
+        int curR = (int)*x + RENDER_W - 9;
+        for (int i = 0; i < 5; i++) {
+            if (tile_solid(newR, heights[i])) {
+                /* Only block if this is a NEW solid tile we'd enter.
+                 * If our current position already overlaps solid at this
+                 * height (e.g. ceiling above us), don't block horizontal. */
+                if (!tile_solid(curR, heights[i])) {
+                    *vx = 0;
+                    return 1;
+                }
+            }
+        }
+    } else {
+        /* Moving left — check left edge of new position */
+        int newL = (int)nx + 8;
+        int curL = (int)*x + 8;
+        for (int i = 0; i < 5; i++) {
+            if (tile_solid(newL, heights[i])) {
+                /* Only block if entering a new solid column at this height */
+                if (!tile_solid(curL, heights[i])) {
+                    *vx = 0;
+                    return 1;
+                }
+            }
+        }
     }
+
     *x = nx;
     return 0;
 }
@@ -99,15 +122,40 @@ int physics_collide_vertical(float *y, float *vy, float x,
 }
 
 /* ── Ceiling collision (rising) ─────────────────────────────────────── */
+/*
+ * When rising (vy < 0), check for solid tiles the character's head would
+ * enter. Uses 3 probe points across the width and sweeps tile-by-tile
+ * from the current head position to the destination to prevent tunneling.
+ */
 int physics_collide_ceiling(float *y, float *vy, float x) {
     float ny = *y + *vy;
-    int headL = (int)x + 10;
-    int headR = (int)x + RENDER_W - 11;
-    int headY = (int)ny;
 
-    if (tile_solid(headL, headY) || tile_solid(headR, headY)) {
-        *vy = 0;
-        return 1;
+    /* Probe points across the character's width */
+    int probeX[3];
+    probeX[0] = (int)x + 10;               /* left edge inset */
+    probeX[1] = (int)x + RENDER_W / 2;     /* center */
+    probeX[2] = (int)x + RENDER_W - 11;    /* right edge inset */
+
+    /* Which tile row is the head currently in vs. where it will be?
+     * Head pixel is at y (top of bounding box). We want the tile row
+     * the head will enter at the new position. */
+    int curHeadRow = (int)(*y) / TILE_SIZE;     /* current head tile row */
+    int newHeadRow = (int)ny / TILE_SIZE;       /* destination head tile row */
+
+    /* Sweep upward from the row above current into the destination row.
+     * We skip curHeadRow itself because the character is already there. */
+    for (int row = curHeadRow - 1; row >= newHeadRow; row--) {
+        /* Check if any probe hits a solid tile in this row.
+         * Probe at the middle of the tile row for reliable detection. */
+        int py = row * TILE_SIZE + TILE_SIZE / 2;
+        for (int i = 0; i < 3; i++) {
+            if (tile_solid(probeX[i], py)) {
+                /* Stop: place character so head is just below this tile */
+                *y = (float)((row + 1) * TILE_SIZE);
+                *vy = 0;
+                return 1;
+            }
+        }
     }
     *y = ny;
     return 0;

@@ -6,9 +6,20 @@
 #define LEVEL_H
 
 #include "types.h"
+#include "levelfile.h"
 
 /* ── Tile map (0=air, 1=solid) ──────────────────────────────────────── */
 extern int level[LEVEL_ROWS][LEVEL_COLS];
+
+/* ── Spawn position (tile coords, set by level_load_from_data) ──────── */
+extern int level_spawn_col;
+extern int level_spawn_row;
+
+/* ── Loading ────────────────────────────────────────────────────────── */
+
+/* Load tiles and spawn from a parsed LevelData struct.
+ * Returns 1 on success, 0 on failure. */
+int level_load_from_data(const LevelData *data);
 
 /* ── Queries ────────────────────────────────────────────────────────── */
 int tile_solid(int px, int py);

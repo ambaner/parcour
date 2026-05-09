@@ -2,11 +2,16 @@
  * Copyright (c) 2026 ambaner. Licensed under the MIT License.
  * level.c — Tile map data, collision, and tile rendering
  *
- * Depends on: types.h, renderer.h
+ * Depends on: types.h, renderer.h, levelfile.h
  */
 
 #include "level.h"
 #include "renderer.h"
+#include <string.h>
+
+/* ── Spawn position (default matches the built-in level) ────────────── */
+int level_spawn_col = 10;
+int level_spawn_row = 27;
 
 /* ── Tile map ───────────────────────────────────────────────────────── */
 /*
@@ -59,6 +64,20 @@ int level[LEVEL_ROWS][LEVEL_COLS] = {
 /* row28 */ {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 /* row29 */ {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},  /* bottom ground */
 };
+
+/*
+ * level_load_from_data — Replace the tile map with data from a LevelData struct.
+ *
+ * Copies the tile array and spawn position into the global level state.
+ * Returns 1 on success, 0 if data is NULL.
+ */
+int level_load_from_data(const LevelData *data) {
+    if (!data) return 0;
+    memcpy(level, data->tiles, sizeof(level));
+    level_spawn_col = data->spawn_col;
+    level_spawn_row = data->spawn_row;
+    return 1;
+}
 
 /*
  * tile_solid — Is the tile at pixel position (px, py) solid?
@@ -161,6 +180,22 @@ int tile_head_ledge(float x, float y, int facing, float *grabY) {
 
     if (tile_solid(probeX, headY) && !tile_solid(probeX, headY - TILE_SIZE)) {
         int ledgeRow = headY / TILE_SIZE;
+
+        /* The platform must be at least 2 tiles wide in the facing direction
+         * from the grab point — a single floating tile isn't a real ledge
+         * you can pull yourself onto. */
+        int nextX = probeX + (facing > 0 ? TILE_SIZE : -TILE_SIZE);
+        if (!tile_solid(nextX, headY))
+            return 0;
+
+        /* Anti-jailbreak: the ledge must NOT be directly overhead.
+         * If the tile at head height directly above the character's center
+         * is solid, this is a ceiling — not a side wall to climb.
+         * The character must approach the ledge from the side. */
+        int centerX = (int)x + RENDER_W / 2;
+        if (tile_solid(centerX, headY))
+            return 0;  /* Ceiling above character — can't grab */
+
         *grabY = (float)(ledgeRow * TILE_SIZE - RENDER_H / 4);
         return 1;
     }

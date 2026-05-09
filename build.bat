@@ -49,10 +49,15 @@ if /I "%~2"=="quick"   set "TESTMODE=--quick"
 if not exist "%BUILD_FRE%" mkdir "%BUILD_FRE%"
 if not exist "%BUILD_CHK%" mkdir "%BUILD_CHK%"
 
-set "ENGINE_SRCS=%ENGINE%\gravity.c %ENGINE%\input.c %ENGINE%\log.c %ENGINE%\math.c %ENGINE%\physics.c %ENGINE%\renderer.c"
+set "ENGINE_SRCS=%ENGINE%\gravity.c %ENGINE%\input.c %ENGINE%\log.c %ENGINE%\math.c %ENGINE%\physics.c %ENGINE%\renderer.c %ENGINE%\levelfile.c %ENGINE%\levelgen.c"
 set "GAME_SRCS=%GAME%\game.c %GAME%\character.c %GAME%\sprite.c %GAME%\level.c"
-set "TEST_SRCS=%TEST_DIR%\test_main.c %TEST_DIR%\test_helpers.c %TEST_DIR%\engine\test_math.c %TEST_DIR%\engine\test_gravity.c %TEST_DIR%\engine\test_physics.c %TEST_DIR%\game\test_character.c %TEST_DIR%\game\test_state_transitions.c %TEST_DIR%\game\test_level.c %TEST_DIR%\game\test_regression.c %TEST_DIR%\game\test_sweep.c %TEST_DIR%\game\test_replay.c %TEST_DIR%\game\test_integration.c"
+set "TEST_SRCS=%TEST_DIR%\test_main.c %TEST_DIR%\test_helpers.c %TEST_DIR%\engine\test_math.c %TEST_DIR%\engine\test_gravity.c %TEST_DIR%\engine\test_physics.c %TEST_DIR%\engine\test_levelfile.c %TEST_DIR%\engine\test_levelgen.c %TEST_DIR%\game\test_character.c %TEST_DIR%\game\test_state_transitions.c %TEST_DIR%\game\test_level.c %TEST_DIR%\game\test_regression.c %TEST_DIR%\game\test_sweep.c %TEST_DIR%\game\test_replay.c %TEST_DIR%\game\test_integration.c"
 set "GAME_TEST_SRCS=%GAME%\character.c %GAME%\sprite.c %GAME%\level.c"
+set "EDITOR_SRC=%SRC%\editor\editor.c"
+set "VERSION_HDR=%SRC%"
+set "VERSION_GAME_RC=%GAME%\version_game.rc"
+set "VERSION_TEST_RC=%TEST_DIR%\version_test.rc"
+set "VERSION_EDITOR_RC=%SRC%\editor\version_editor.rc"
 set "LIBS=user32.lib gdi32.lib winmm.lib"
 
 if /I "!CONFIG!"=="chk" goto BUILD_CHK
@@ -65,21 +70,33 @@ pushd "%BUILD_FRE%"
 echo --- engine.lib ---
 cl /c /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" !ENGINE_SRCS!
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: engine compile & popd & exit /b 1 )
-lib /nologo /out:engine.lib gravity.obj input.obj log.obj math.obj physics.obj renderer.obj
+lib /nologo /out:engine.lib gravity.obj input.obj log.obj math.obj physics.obj renderer.obj levelfile.obj levelgen.obj
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: engine lib & popd & exit /b 1 )
 echo OK: engine.lib
 echo --- sprites.res ---
 rc /nologo /I"%GAME%" /fo sprites.res "%GAME%\sprites.rc"
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: resource compile & popd & exit /b 1 )
 echo OK: sprites.res
+echo --- version resources ---
+rc /nologo /I"%VERSION_HDR%" /fo version_game.res "%VERSION_GAME_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_game.rc & popd & exit /b 1 )
+rc /nologo /I"%VERSION_HDR%" /fo version_test.res "%VERSION_TEST_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_test.rc & popd & exit /b 1 )
+rc /nologo /I"%VERSION_HDR%" /fo version_editor.res "%VERSION_EDITOR_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_editor.rc & popd & exit /b 1 )
+echo OK: version resources
 echo --- parcour.exe ---
-cl /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" !GAME_SRCS! /link engine.lib sprites.res %LIBS% /out:parcour.exe
+cl /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" !GAME_SRCS! /link engine.lib sprites.res version_game.res %LIBS% /out:parcour.exe
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: game build & popd & exit /b 1 )
 echo OK: parcour.exe
 echo --- test_runner.exe ---
-cl /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" /I"%TEST_DIR%" !TEST_SRCS! !GAME_TEST_SRCS! /link engine.lib %LIBS% /out:test_runner.exe
+cl /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" /I"%TEST_DIR%" !TEST_SRCS! !GAME_TEST_SRCS! /link engine.lib version_test.res %LIBS% /out:test_runner.exe
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: test build & popd & exit /b 1 )
 echo OK: test_runner.exe
+echo --- editor.exe ---
+cl /O2 /MT /W4 /WX /nologo /I"%ENGINE%" /I"%GAME%" !EDITOR_SRC! /link engine.lib version_editor.res user32.lib gdi32.lib comdlg32.lib /out:editor.exe
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: editor build & popd & exit /b 1 )
+echo OK: editor.exe
 popd
 if "!RUNTESTS!"=="1" (
     echo.
@@ -102,21 +119,33 @@ pushd "%BUILD_CHK%"
 echo --- engine.lib ---
 cl /c /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" !ENGINE_SRCS!
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: engine compile & popd & exit /b 1 )
-lib /nologo /out:engine.lib gravity.obj input.obj log.obj math.obj physics.obj renderer.obj
+lib /nologo /out:engine.lib gravity.obj input.obj log.obj math.obj physics.obj renderer.obj levelfile.obj levelgen.obj
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: engine lib & popd & exit /b 1 )
 echo OK: engine.lib
 echo --- sprites.res ---
 rc /nologo /I"%GAME%" /fo sprites.res "%GAME%\sprites.rc"
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: resource compile & popd & exit /b 1 )
 echo OK: sprites.res
+echo --- version resources ---
+rc /nologo /D_DEBUG /I"%VERSION_HDR%" /fo version_game.res "%VERSION_GAME_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_game.rc & popd & exit /b 1 )
+rc /nologo /D_DEBUG /I"%VERSION_HDR%" /fo version_test.res "%VERSION_TEST_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_test.rc & popd & exit /b 1 )
+rc /nologo /D_DEBUG /I"%VERSION_HDR%" /fo version_editor.res "%VERSION_EDITOR_RC%"
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: version_editor.rc & popd & exit /b 1 )
+echo OK: version resources
 echo --- parcour.exe ---
-cl /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" !GAME_SRCS! /link engine.lib sprites.res %LIBS% /DEBUG /out:parcour.exe
+cl /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" !GAME_SRCS! /link engine.lib sprites.res version_game.res %LIBS% /DEBUG /out:parcour.exe
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: game build & popd & exit /b 1 )
 echo OK: parcour.exe
 echo --- test_runner.exe ---
-cl /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" /I"%TEST_DIR%" !TEST_SRCS! !GAME_TEST_SRCS! /link engine.lib %LIBS% /DEBUG /out:test_runner.exe
+cl /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" /I"%TEST_DIR%" !TEST_SRCS! !GAME_TEST_SRCS! /link engine.lib version_test.res %LIBS% /DEBUG /out:test_runner.exe
 if !ERRORLEVEL! NEQ 0 ( echo FAILED: test build & popd & exit /b 1 )
 echo OK: test_runner.exe
+echo --- editor.exe ---
+cl /Od /Zi /MTd /W4 /WX /nologo /D_DEBUG /I"%ENGINE%" /I"%GAME%" !EDITOR_SRC! /link engine.lib version_editor.res user32.lib gdi32.lib comdlg32.lib /DEBUG /out:editor.exe
+if !ERRORLEVEL! NEQ 0 ( echo FAILED: editor build & popd & exit /b 1 )
+echo OK: editor.exe
 popd
 if "!RUNTESTS!"=="1" (
     echo.

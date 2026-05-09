@@ -128,22 +128,25 @@ static void test_character_wall_slide_detach(void) {
 static void test_character_wall_jump(void) {
     TEST_BEGIN("character: pressing Up during WALL_SLIDE \xe2\x86\x92 wall-jump");
     Character p;
-    character_init(&p, 37.0f * TILE_SIZE, 10.0f * TILE_SIZE);
+    /* Position character wall-sliding against left border (col 0/1).
+     * Use x just right of the left wall: bodyL = x+8 must clear col 1.
+     * Col 1 is solid (border), so x must have bodyL at col 2 boundary.
+     * x = 2*TILE_SIZE - 8 = 56.  After wall-jump vx>0, bodyR stays in air.
+     * y=16*TILE_SIZE: rows 16-19 at cols 2-8 are all air. */
+    character_init(&p, 2.0f * TILE_SIZE - 8.0f, 16.0f * TILE_SIZE);
     p.onGround = 0;
     p.vy = 2.0f;
-    p.facing = 1;
+    p.facing = -1;  /* facing left (against left wall) */
     p.state = STATE_WALL_SLIDE;
 
     input_clear();
-    keyRight = 1;
+    keyLeft = 1;
     keyUp = 1;
     keyUpJustPressed = 1;
     character_update(&p);
     ASSERT_EQ_INT(p.state, STATE_JUMP_RISE);
-    ASSERT_EQ_INT(p.facing, -1);
-
-    simulate(&p, 5, -1, -1);
-    ASSERT_TRUE(p.vx < 0);
+    ASSERT_EQ_INT(p.facing, 1);  /* flipped from -1 to +1 */
+    ASSERT_TRUE(p.vx > 0);       /* pushed away from left wall */
     TEST_PASS();
 }
 

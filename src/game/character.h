@@ -57,6 +57,9 @@ typedef struct {
                             * prevents oscillation when walking off a ledge
                             * or releasing a grab (would instantly re-grab
                             * the same ledge without this delay) */
+    int stepCooldown;      /* frames before auto-step-up can re-trigger;
+                            * creates a pause between consecutive steps so
+                            * staircases are climbed one step at a time */
 } Character;
 
 /* ── Public API ─────────────────────────────────────────────────────── */

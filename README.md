@@ -18,14 +18,16 @@ All 44 sprite frames are embedded as Win32 resources, producing a **single self-
 ## ✨ Features
 
 - **Pure C / Win32** — no C++, no game engine, no frameworks
-- **Custom 2D engine** — math, gravity, physics, input, renderer, logging
+- **Custom 2D engine** — math, gravity, physics, input, renderer, logging, level file I/O, maze generation
 - **15-state character FSM** — idle, run, jump, fall, crouch, wall-slide, ledge-grab, somersault, and more
-- **PoP-style physics** — quadratic air drag, asymptotic terminal velocity, tile-based AABB collision
-- **Wall vs. platform distinction** — thin platforms passable horizontally, only block from above
+- **PoP-style physics** — quadratic air drag, asymptotic terminal velocity, full-body AABB collision with overlap-aware filtering
+- **Tiered barrier interaction** — auto-step-up for foot-level, manual jump for chest-level, pull-up for head-level
 - **Ledge mechanics** — corner-grab from air, head-height grab from ground, auto-climb on forward hold
+- **Level editor** — standalone GUI for creating `.parcour` level files with clearance warnings and enclosure validation
+- **Custom levels** — CLI level loading (`parcour.exe mymap.parcour`) and random maze generator
 - **Framebuffer rendering** — direct pixel manipulation via `UINT32[]` array blitted with `StretchDIBits`
-- **52 automated tests** — custom test framework, runs on every build
-- **Single-file deployment** — sprites embedded as RC resources, static CRT linking (`/MT`)
+- **81 automated tests** — custom test framework, runs on every build
+- **Single-file deployment** — sprites embedded as RC resources, static CRT linking (`/MT`), version info embedded
 
 ---
 
@@ -67,13 +69,16 @@ build.bat fre
 
 This runs the full 4-stage pipeline:
 1. Compiles engine sources → `engine.lib`
-2. Embeds 44 sprite PNGs → `sprites.res`
+2. Embeds 44 sprite PNGs → `sprites.res` + version info resources
 3. Links game → `parcour.exe`
-4. Links tests → `test_runner.exe` (auto-runs, 52 tests)
+4. Links tests → `test_runner.exe` (auto-runs, 81 tests)
 
 **4. Run the game**
 ```cmd
 build\amd64fre\parcour.exe
+
+REM Or load a custom level:
+build\amd64fre\parcour.exe levels\test6.parcour
 ```
 
 ### Build Commands
@@ -105,27 +110,36 @@ build\amd64fre\parcour.exe
 Parcour/
 ├── build.bat                 # Build script (4-stage pipeline)
 ├── src/
+│   ├── version.h             # Shared version constants (all binaries)
 │   ├── engine/               # Reusable 2D engine (→ engine.lib)
 │   │   ├── math.c/h          #   Vector math, AABB
 │   │   ├── gravity.c/h       #   Quadratic gravity with air drag
-│   │   ├── physics.c/h       #   Tile-based collision resolution
+│   │   ├── physics.c/h       #   Full-body collision with overlap-aware filter
 │   │   ├── input.c/h         #   Keyboard state tracking
 │   │   ├── renderer.c/h      #   Framebuffer, StretchDIBits
 │   │   ├── log.c/h           #   File + debug output logging
+│   │   ├── levelfile.c/h     #   .parcour file format parser/writer
+│   │   ├── levelgen.c/h      #   Random maze level generator
 │   │   ├── types.h           #   Shared data types
 │   │   └── stb_image.h       #   PNG decoder (header-only, 3rd party)
-│   └── game/                 # Game-specific code (→ parcour.exe)
-│       ├── game.c            #   WinMain, game loop, WndProc
-│       ├── character.c/h     #   15-state FSM, animation
-│       ├── level.c/h         #   40×30 tile grid
-│       ├── sprite.c/h        #   Dual-mode sprite loading
-│       ├── resource.h        #   RC resource IDs
-│       └── sprites.rc        #   Win32 resource script (44 PNGs)
-├── test/                     # 52 automated tests
-│   ├── engine/               #   Math, gravity, physics tests
-│   └── game/                 #   Character, level, integration tests
+│   ├── game/                 # Game-specific code (→ parcour.exe)
+│   │   ├── game.c            #   WinMain, game loop, CLI level loading
+│   │   ├── character.c/h     #   15-state FSM, barrier tiers, animation
+│   │   ├── level.c/h         #   40×30 tile grid
+│   │   ├── sprite.c/h        #   Dual-mode sprite loading
+│   │   ├── resource.h        #   RC resource IDs
+│   │   ├── sprites.rc        #   Win32 resource script (44 PNGs)
+│   │   └── version_game.rc   #   Version info for parcour.exe
+│   └── editor/               # Level editor (→ editor.exe)
+│       ├── editor.c          #   Win32 GUI tile editor
+│       └── version_editor.rc #   Version info for editor.exe
+├── test/                     # 81 automated tests
+│   ├── engine/               #   Math, gravity, physics, levelfile, levelgen
+│   ├── game/                 #   Character, level, integration, regression
+│   └── version_test.rc       #   Version info for test_runner.exe
+├── levels/                   # Custom .parcour level files
 ├── sprites/                  # 44 PNG sprite frames (embedded at build time)
-├── doc/DESIGN.md             # Comprehensive design document (~1400 lines)
+├── doc/DESIGN.md             # Comprehensive design document (~1550 lines)
 └── build/                    # Build output (gitignored)
 ```
 
@@ -136,25 +150,28 @@ Parcour/
 ![Architecture Diagram](doc/architecture.svg)
 
 - **Engine** (`engine.lib`) — generic, reusable 2D game engine (no game-specific knowledge)
-- **Game** — Prince of Persia-inspired character controller, 15-state FSM, levels, sprites
+- **Game** — Prince of Persia-inspired character controller, 15-state FSM, tiered barrier interaction, levels, sprites
+- **Editor** (`editor.exe`) — standalone level editor for `.parcour` files
 - **Resources** (`sprites.res`) — all 44 sprite PNGs baked into the executable at build time
-- **Tests** (`test_runner.exe`) — 53 automated tests across 9 categories, runs on every build
+- **Tests** (`test_runner.exe`) — 81 automated tests across 12 categories, runs on every build
 
 ---
 
 ## 🧪 Testing
 
-The project includes **52 automated tests** in a custom test framework:
+The project includes **81 automated tests** in a custom test framework:
 
 | Category | Tests | What it covers |
 |----------|-------|---------------|
 | Math | 5 | Vector ops, clamping, AABB overlap |
 | Gravity | 4 | Free-fall, terminal velocity, drag |
-| Physics | 4 | Tile collision, floor/wall detection |
+| Physics | 6 | Tile collision, floor/wall detection, overlap-aware filter |
+| Level File | 7 | .parcour parsing, validation, roundtrip |
+| Level Gen | 9 | Maze generation, connectivity, enclosure |
 | Character | 8 | State machine transitions |
 | Level | 5 | Tile queries, bounds checking |
 | Integration | 9 | Multi-system flows (jump→fall→land) |
-| + others | 17 | Input, renderer, sprite, animation |
+| + others | 28 | Input, renderer, sprite, animation, regression, sweep |
 
 Tests run automatically on every build. To run manually:
 ```cmd
@@ -165,7 +182,7 @@ build\amd64fre\test_runner.exe
 
 ## 📖 Documentation
 
-See **[doc/DESIGN.md](doc/DESIGN.md)** for the comprehensive design document covering:
+See **[doc/DESIGN.md](doc/DESIGN.md)** for the comprehensive design document (~1550 lines) covering:
 - Architecture and module reference
 - Physics system and gravity model
 - Character state machine (15 states)

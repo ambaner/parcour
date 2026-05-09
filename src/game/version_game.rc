@@ -1,0 +1,36 @@
+/* version_game.rc — Version info resource for parcour.exe */
+#include <winver.h>
+#include "version.h"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION    VER_FILE_VERSION
+    PRODUCTVERSION VER_PRODUCT_VERSION
+    FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+    FILEFLAGS      VS_FF_DEBUG
+#else
+    FILEFLAGS      0
+#endif
+    FILEOS         VOS_NT_WINDOWS32
+    FILETYPE       VFT_APP
+    FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      VER_COMPANY_NAME
+            VALUE "FileDescription",  "Parcour - Prince of Persia-inspired 2D Platformer"
+            VALUE "FileVersion",      VER_FILE_VERSION_STR
+            VALUE "InternalName",     "parcour"
+            VALUE "LegalCopyright",   VER_COPYRIGHT
+            VALUE "OriginalFilename", "parcour.exe"
+            VALUE "ProductName",      VER_PRODUCT_NAME
+            VALUE "ProductVersion",   VER_PRODUCT_VERSION_STR
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0
+    END
+END

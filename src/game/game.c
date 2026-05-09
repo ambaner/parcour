@@ -11,6 +11,7 @@
 #include "input.h"
 #include "renderer.h"
 #include "level.h"
+#include "levelfile.h"
 #include "character.h"
 #include "log.h"
 #include <mmsystem.h>
@@ -72,11 +73,57 @@ static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 /* ── Entry point ────────────────────────────────────────────────────── */
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdLine, int cmdShow) {
-    (void)hPrev; (void)cmdLine; (void)cmdShow;
+    (void)hPrev; (void)cmdShow;
 
     /* ── Init logging (recreates log file each run) ── */
     game_log_init();
     game_log("Game starting up");
+
+    /* ── Load custom level from command line (if provided) ── */
+    {
+        /* cmdLine contains everything after the exe name.
+         * Strip leading/trailing whitespace and quotes. */
+        char levelPath[512] = {0};
+        if (cmdLine && cmdLine[0] != '\0') {
+            const char *p = cmdLine;
+            while (*p == ' ' || *p == '\t') p++;
+            if (*p == '"') {
+                p++;
+                int i = 0;
+                while (*p && *p != '"' && i < (int)sizeof(levelPath) - 1)
+                    levelPath[i++] = *p++;
+                levelPath[i] = '\0';
+            } else {
+                strncpy_s(levelPath, sizeof(levelPath), p, _TRUNCATE);
+                /* Trim trailing whitespace */
+                int len = (int)strlen(levelPath);
+                while (len > 0 && (levelPath[len-1] == ' ' || levelPath[len-1] == '\r' || levelPath[len-1] == '\n'))
+                    levelPath[--len] = '\0';
+            }
+        }
+
+        if (levelPath[0] != '\0') {
+            game_log("Loading level file: %s", levelPath);
+            LevelData data;
+            LevelError err = levelfile_load(levelPath, &data);
+            if (err != LEVEL_OK) {
+                char errMsg[512];
+                snprintf(errMsg, sizeof(errMsg),
+                    "Failed to load level file:\n%s\n\nError: %s",
+                    levelPath, levelfile_error_string(err));
+                MessageBoxA(NULL, errMsg, "Level Load Error", MB_OK | MB_ICONERROR);
+                game_log("Level load failed: %s", levelfile_error_string(err));
+                game_log_close();
+                return 1;
+            }
+            level_load_from_data(&data);
+            game_log("Level loaded: \"%s\" by %s (spawn %d,%d)",
+                     data.name, data.author, data.spawn_col, data.spawn_row);
+        } else {
+            game_log("No level file specified, using built-in level (spawn %d,%d)",
+                     level_spawn_col, level_spawn_row);
+        }
+    }
 
     /* ── Load sprite frames ── */
     {
@@ -133,9 +180,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdLine, int cmdShow)
         }
     }
 
-    /* ── Init player — start on the ground (row 29) ── */
-    character_init(&player, 10.0f * TILE_SIZE, 29.0f * TILE_SIZE - RENDER_H);
-    game_log("Player init at (%.0f, %.0f)", 10.0f * TILE_SIZE, 29.0f * TILE_SIZE - RENDER_H);
+    /* ── Init player — start at level spawn point ── */
+    {
+        float spawnX = (float)level_spawn_col * TILE_SIZE;
+        float spawnY = (float)(level_spawn_row + 1) * TILE_SIZE - RENDER_H;
+        character_init(&player, spawnX, spawnY);
+        game_log("Player init at (%.0f, %.0f) [spawn tile %d,%d]",
+                 spawnX, spawnY, level_spawn_col, level_spawn_row);
+    }
 
     /* ── Create window ── */
     WNDCLASSW wc = {0};

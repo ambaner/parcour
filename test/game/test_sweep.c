@@ -43,9 +43,25 @@ static void test_sweep_walk_right_never_stuck(void) {
             if (!tile_solid(col * TILE_SIZE + TILE_SIZE / 2,
                             row * TILE_SIZE + 1))
                 continue;
-            Character p;
             float startX = (float)(col * TILE_SIZE);
             float startY = (float)(row * TILE_SIZE) - RENDER_H;
+
+            /* Skip positions where character body overlaps solid tiles.
+             * With full-body collision, the character physically can't
+             * stand here without being inside a wall. */
+            int bodyBlocked = 0;
+            int bL = (int)startX + 8;
+            int bR = (int)startX + RENDER_W - 9;
+            for (int h = 4; h < RENDER_H - 2; h += 16) {
+                int py = (int)startY + h;
+                if (tile_solid(bL, py) || tile_solid(bR, py)) {
+                    bodyBlocked = 1;
+                    break;
+                }
+            }
+            if (bodyBlocked) break;
+
+            Character p;
             character_init(&p, startX, startY);
             p.onGround = 1;
 

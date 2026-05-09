@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.0] — 2026-05-08
+
+### Added
+- **Level editor** — standalone Win32 GUI (`editor.exe`) for creating `.parcour` level files with tile painting, clearance warnings, and enclosure validation
+- **`.parcour` file format** — binary level file format with header, 40×30 tile grid, spawn validation
+- **Random level generator** — `levelgen.c` produces random maze levels with guaranteed connectivity and enclosure
+- **CLI level loading** — `parcour.exe mymap.parcour` loads custom levels from the command line
+- **Tiered barrier interaction** — foot-level barriers auto-step-up (20-frame cooldown), chest-level barriers block (manual jump), head-level barriers trigger pull-up
+- **Overlap-aware horizontal collision** — full-body tile_solid checks at 5 heights with overlap filter to prevent getting stuck under ceiling platforms
+- **Version info resources** — all binaries (`parcour.exe`, `test_runner.exe`, `editor.exe`) embed Win32 VERSIONINFO with product name, version 1.1.0.0, copyright, and file descriptions
+- **Shared version header** — `src/version.h` centralizes version constants across all binaries
+- **29 new tests** (52 → 81) — levelfile (7), levelgen (9), input (4), renderer (3), sprite (3), animation (7), plus expanded physics, regression, and sweep tests
+- **Test levels** — test3 (sealed room), test4 (low ceiling), test5 (single-tile walls), test6 (staircase)
+
+### Changed
+- **Horizontal collision rewrite** — now uses `tile_solid()` at all 5 body heights (not `tile_wall()` at mid+low+foot); leading-edge-only with overlap-aware filtering
+- **Character struct** — added `stepCooldown` field for auto-step-up rate limiting
+- **Build pipeline** — now 5-stage: engine.lib → sprites.res → version resources → parcour.exe/test_runner.exe/editor.exe
+- **Design document** — comprehensive update to v1.1 (~1550 lines), rewrote physics sections, added barrier tiers, level system, collision journey iteration #6
+
+### Fixed
+- **Character stuck under ceiling** — after corner-climbing to a position under ceiling platforms, horizontal movement was blocked in both directions; overlap-aware filter now allows movement when already inside a solid tile
+- **4 test regressions** from collision rewrite — repositioned test scenarios to avoid false reliance on floor/OOB tile blocking
+
+---
+
 ## [1.0.0] — 2026-04-27
 
 ### Added

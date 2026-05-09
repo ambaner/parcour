@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
     printf("\n"); run_gravity_tests();
     printf("\n"); run_level_tests();
     printf("\n"); run_physics_tests();
+    printf("\n"); run_levelfile_tests();
+    printf("\n"); run_levelgen_tests();
 
     if (!runFull) goto SUMMARY;
 
