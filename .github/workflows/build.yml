@@ -32,5 +32,8 @@ jobs:
       if: matrix.config == 'fre'
       with:
         name: parcour-${{ matrix.config }}
-        path: build/amd64${{ matrix.config }}/parcour.exe
+        path: |
+          build/amd64${{ matrix.config }}/parcour.exe
+          build/amd64${{ matrix.config }}/editor.exe
+          build/amd64${{ matrix.config }}/test_runner.exe
         retention-days: 30

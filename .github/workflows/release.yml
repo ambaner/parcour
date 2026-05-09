@@ -21,11 +21,14 @@ jobs:
       run: build.bat fre
       shell: cmd
 
-    - name: Upload build artifact
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: parcour-fre
-        path: build/amd64fre/parcour.exe
+        path: |
+          build/amd64fre/parcour.exe
+          build/amd64fre/editor.exe
+          build/amd64fre/test_runner.exe
 
   release:
     needs: build
@@ -43,5 +46,8 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: parcour.exe
+        files: |
+          parcour.exe
+          editor.exe
+          test_runner.exe
         generate_release_notes: true
